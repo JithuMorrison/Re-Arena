@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from './AuthContext';
 
 const TherapistDashboard = () => {
   const { currentUser } = useAuth();
@@ -20,7 +20,7 @@ const TherapistDashboard = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/therapist/patients?therapistId=${currentUser.id}`);
+      const response = await fetch(`http://localhost:5000/api/therapist/patients?therapistId=${currentUser._id}`);
       const data = await response.json();
       if (response.ok) {
         setPatients(data.patients);
@@ -32,7 +32,7 @@ const TherapistDashboard = () => {
 
   const fetchSessions = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/sessions?userId=${currentUser.id}&userType=therapist`);
+      const response = await fetch(`http://localhost:5000/api/sessions?userId=${currentUser._id}&userType=therapist`);
       const data = await response.json();
       if (response.ok) {
         setSessions(data.sessions);
@@ -51,7 +51,7 @@ const TherapistDashboard = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          therapistId: currentUser.id,
+          therapistId: currentUser._id,
           patient: newPatient
         }),
       });

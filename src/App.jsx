@@ -1,14 +1,14 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import 'bootstrap/dist/css/bootstrap.min.css';
-import Navbar from './components/Navbar';
-import Home from './pages/Home';
-import Login from './pages/Login';
-import Register from './pages/Register';
-import TherapistDashboard from './pages/TherapistDashboard';
-import InstructorDashboard from './pages/InstructorDashboard';
-import UserDashboard from './pages/UserDashboard';
-import { AuthProvider } from './context/AuthContext';
+import Navbar from './Navbar';
+import Home from './Home';
+import Login from './Login';
+import Register from './Register';
+import TherapistDashboard from './TherapistDashboard';
+import InstructorDashboard from './InstructorDashboard';
+import UserDashboard from './UserDashboard';
+import { AuthProvider } from './AuthContext';
 
 function App() {
   return (
