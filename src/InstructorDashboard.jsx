@@ -121,7 +121,6 @@ const InstructorDashboard = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <div className="col-md-9 col-lg-10 p-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
             <h2>Instructor Dashboard</h2>
