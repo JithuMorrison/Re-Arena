@@ -55,7 +55,7 @@ const InstructorDashboard = () => {
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
-    
+
     try {
       const response = await fetch('http://localhost:5000/api/session', {
         method: 'POST',
@@ -70,7 +70,7 @@ const InstructorDashboard = () => {
           gameData: reviewData.gameData
         }),
       });
-      
+
       if (response.ok) {
         alert('Session review submitted successfully');
         setShowReviewForm(false);
@@ -91,16 +91,16 @@ const InstructorDashboard = () => {
         <div className="col-md-3 col-lg-2 sidebar bg-success text-white vh-100">
           <div className="d-flex flex-column p-3">
             <div className="text-center w-100 mb-4">
-              <img 
-                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'Instructor')}&background=random`} 
-                alt="Instructor" 
-                className="rounded-circle" 
-                width="80" 
+              <img
+                src={`https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser?.name || 'Instructor')}&background=random`}
+                alt="Instructor"
+                className="rounded-circle"
+                width="80"
               />
               <h5 className="my-2">{currentUser?.name}</h5>
               <p className="text-light small">Instructor</p>
             </div>
-            
+
             <ul className="nav nav-pills flex-column">
               <li className="nav-item">
                 <a href="#" className="nav-link active text-white">
@@ -123,8 +123,8 @@ const InstructorDashboard = () => {
 
         <div className="col-md-9 col-lg-10 p-4">
           <div className="d-flex justify-content-between align-items-center mb-4">
-            <h2>Instructor Dashboar</h2>
-            <button 
+            <h2>Instructor Dashboard</h2>
+            <button
               className="btn btn-success"
               onClick={() => setShowReviewForm(true)}
               disabled={!userData}
@@ -173,11 +173,11 @@ const InstructorDashboard = () => {
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-4 text-center">
-                        <img 
-                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`} 
-                          alt="User" 
-                          className="rounded-circle mb-3" 
-                          width="100" 
+                        <img
+                          src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userData.name)}&background=random`}
+                          alt="User"
+                          className="rounded-circle mb-3"
+                          width="100"
                         />
                         <h5>{userData.name}</h5>
                         <p className="text-muted">User Code: {userData.userCode}</p>
@@ -256,8 +256,8 @@ const InstructorDashboard = () => {
             <div className="modal-content">
               <div className="modal-header">
                 <h5 className="modal-title">Add Session Review</h5>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn-close"
                   onClick={() => setShowReviewForm(false)}
                 ></button>
@@ -269,7 +269,7 @@ const InstructorDashboard = () => {
                     <select
                       className="form-select"
                       value={reviewData.rating}
-                      onChange={(e) => setReviewData({...reviewData, rating: parseInt(e.target.value)})}
+                      onChange={(e) => setReviewData({ ...reviewData, rating: parseInt(e.target.value) })}
                     >
                       <option value="5">5 - Excellent</option>
                       <option value="4">4 - Very Good</option>
@@ -284,22 +284,22 @@ const InstructorDashboard = () => {
                       className="form-control"
                       rows="4"
                       value={reviewData.notes}
-                      onChange={(e) => setReviewData({...reviewData, notes: e.target.value})}
+                      onChange={(e) => setReviewData({ ...reviewData, notes: e.target.value })}
                       required
                     ></textarea>
                   </div>
                 </form>
               </div>
               <div className="modal-footer">
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowReviewForm(false)}
                 >
                   Cancel
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-primary"
                   onClick={handleReviewSubmit}
                 >
