@@ -20,7 +20,7 @@ const TherapistDashboard = () => {
 
   const fetchPatients = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/therapist/patients?therapistId=${currentUser._id}`);
+      const response = await fetch(`http://localhost:5000/api/therapist/patients?therapistId=${currentUser.id}`);
       const data = await response.json();
       if (response.ok) {
         setPatients(data.patients);
@@ -32,7 +32,7 @@ const TherapistDashboard = () => {
 
   const fetchSessions = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/sessions?userId=${currentUser._id}&userType=therapist`);
+      const response = await fetch(`http://localhost:5000/api/sessions?userId=${currentUser.id}&userType=therapist`);
       const data = await response.json();
       if (response.ok) {
         setSessions(data.sessions);
