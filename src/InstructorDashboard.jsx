@@ -23,8 +23,9 @@ const InstructorDashboard = () => {
   const fetchSessions = async () => {
     try {
       const response = await fetch(
-        `http://localhost:5000/api/sessions?userId=${currentUser._id}&userType=instructor`
+        `http://localhost:5000/api/sessions?userId=${currentUser.id}&userType=instructor`
       );
+      console.log(currentUser);
       const data = await response.json();
       if (response.ok) {
         setSessions(data.sessions);
@@ -57,18 +58,21 @@ const InstructorDashboard = () => {
     e.preventDefault();
 
     try {
+      const data = JSON.stringify({
+          instructorId: currentUser.id,
+          patientId: userData._id,
+          therapistId: userData.therapistId,
+          review: reviewData.notes,
+          rating: reviewData.rating,
+          gameData: reviewData.gameData
+        });
+      console.log(data);
       const response = await fetch('http://localhost:5000/api/session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          instructorId: currentUser._id,
-          patientId: userData._id,
-          review: reviewData.notes,
-          rating: reviewData.rating,
-          gameData: reviewData.gameData
-        }),
+        body: data,
       });
 
       if (response.ok) {
