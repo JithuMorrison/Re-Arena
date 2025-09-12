@@ -13,20 +13,26 @@ const InstructorDashboard = () => {
   const [reviewData, setReviewData] = useState({
     rating: 5,
     notes: '',
-    gameData: {}
+    gameData: {
+      gameName: '',
+      analytics: {
+        score: 0,
+        spawnAreaSize: 5,
+        bubbleSpeedAction: 5,
+        bubbleLifetime: 3,
+        spawnHeight: 3,
+        numBubbles: 10,
+        bubbleSize: 1
+      }
+    }
   });
   const [sessionData, setSessionData] = useState({
     patientId: '',
     gameName: '',
     sessionId: ''
   });
-  const [gameAnalytics, setGameAnalytics] = useState({
-    score: 0,
-    movements: 0,
-    steps: 0,
-    handMovements: 0,
-    legMovements: 0
-  });
+  const [availableSessions, setAvailableSessions] = useState([]);
+  const [selectedSessionForReview, setSelectedSessionForReview] = useState(null);
 
   useEffect(() => {
     if (currentUser) {
@@ -42,6 +48,8 @@ const InstructorDashboard = () => {
       const data = await response.json();
       if (response.ok) {
         setSessions(data.sessions);
+        // Filter active sessions for review
+        setAvailableSessions(data.sessions.filter(s => s.status === 'active'));
       }
     } catch (error) {
       console.error('Error fetching sessions:', error);
@@ -59,6 +67,14 @@ const InstructorDashboard = () => {
       const data = await response.json();
       if (response.ok) {
         setUserData(data.user);
+        // Fetch sessions for this user
+        const sessionsResponse = await fetch(
+          `http://localhost:5000/api/sessions?patientId=${data.user._id}&userType=instructor`
+        );
+        const sessionsData = await sessionsResponse.json();
+        if (sessionsResponse.ok) {
+          setAvailableSessions(sessionsData.sessions.filter(s => s.status === 'active'));
+        }
       } else {
         alert('User not found');
       }
@@ -107,17 +123,22 @@ const InstructorDashboard = () => {
 
   const handleReviewSubmit = async (e) => {
     e.preventDefault();
+    if (!selectedSessionForReview) {
+      alert('Please select a session to review');
+      return;
+    }
 
     try {
       const dataToSend = {
+        sessionId: selectedSessionForReview.sessionId,
         instructorId: currentUser.id,
         patientId: userData._id,
         therapistId: userData.therapistId,
         review: reviewData.notes,
         rating: reviewData.rating,
         gameData: {
-          ...reviewData.gameData,
-          analytics: gameAnalytics
+          gameName: reviewData.gameData.gameName,
+          analytics: reviewData.gameData.analytics
         }
       };
 
@@ -132,14 +153,23 @@ const InstructorDashboard = () => {
       if (response.ok) {
         alert('Session review submitted successfully');
         setShowReviewForm(false);
-        setReviewData({ rating: 5, notes: '', gameData: {} });
-        setGameAnalytics({
-          score: 0,
-          movements: 0,
-          steps: 0,
-          handMovements: 0,
-          legMovements: 0
+        setReviewData({
+          rating: 5,
+          notes: '',
+          gameData: {
+            gameName: '',
+            analytics: {
+              score: 0,
+              spawnAreaSize: 5,
+              bubbleSpeedAction: 5,
+              bubbleLifetime: 3,
+              spawnHeight: 3,
+              numBubbles: 10,
+              bubbleSize: 1
+            }
+          }
         });
+        setSelectedSessionForReview(null);
         fetchSessions();
       } else {
         alert('Error submitting review');
@@ -466,6 +496,27 @@ const InstructorDashboard = () => {
               </div>
               <div className="modal-body">
                 <form onSubmit={handleReviewSubmit}>
+                  {/* Session Selection */}
+                  <div className="mb-3">
+                    <label className="form-label">Select Session</label>
+                    <select
+                      className="form-select"
+                      value={selectedSessionForReview ? selectedSessionForReview.sessionId : ''}
+                      onChange={(e) => {
+                        const session = availableSessions.find(s => s.sessionId === e.target.value);
+                        setSelectedSessionForReview(session);
+                      }}
+                      required
+                    >
+                      <option value="">Select a session</option>
+                      {availableSessions.map(session => (
+                        <option key={session.sessionId} value={session.sessionId}>
+                          {session.sessionId} - {session.gameData?.gameName || 'Unknown Game'} - {new Date(session.date).toLocaleDateString()}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
                   <div className="row">
                     <div className="col-md-6 mb-3">
                       <label className="form-label">Rating</label>
@@ -485,11 +536,12 @@ const InstructorDashboard = () => {
                       <label className="form-label">Game</label>
                       <select
                         className="form-select"
-                        value={reviewData.gameData.gameName || ''}
+                        value={reviewData.gameData.gameName}
                         onChange={(e) => setReviewData({ 
                           ...reviewData, 
                           gameData: {...reviewData.gameData, gameName: e.target.value} 
                         })}
+                        required
                       >
                         <option value="">Select a game</option>
                         <option value="bubble_game">Bubble Pop Game</option>
@@ -521,44 +573,130 @@ const InstructorDashboard = () => {
                           <input
                             type="number"
                             className="form-control"
-                            value={gameAnalytics.score}
-                            onChange={(e) => setGameAnalytics({...gameAnalytics, score: parseInt(e.target.value)})}
+                            value={reviewData.gameData.analytics.score}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  score: parseInt(e.target.value)
+                                }
+                              }
+                            })}
                           />
                         </div>
                         <div className="col-md-6 mb-2">
-                          <label className="form-label">Total Movements</label>
+                          <label className="form-label">Spawn Area Size</label>
                           <input
                             type="number"
                             className="form-control"
-                            value={gameAnalytics.movements}
-                            onChange={(e) => setGameAnalytics({...gameAnalytics, movements: parseInt(e.target.value)})}
+                            step="0.1"
+                            value={reviewData.gameData.analytics.spawnAreaSize}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  spawnAreaSize: parseFloat(e.target.value)
+                                }
+                              }
+                            })}
                           />
                         </div>
                         <div className="col-md-6 mb-2">
-                          <label className="form-label">Steps Covered</label>
+                          <label className="form-label">Bubble Speed</label>
                           <input
                             type="number"
                             className="form-control"
-                            value={gameAnalytics.steps}
-                            onChange={(e) => setGameAnalytics({...gameAnalytics, steps: parseInt(e.target.value)})}
+                            step="0.1"
+                            value={reviewData.gameData.analytics.bubbleSpeedAction}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  bubbleSpeedAction: parseFloat(e.target.value)
+                                }
+                              }
+                            })}
                           />
                         </div>
                         <div className="col-md-6 mb-2">
-                          <label className="form-label">Hand Movements</label>
+                          <label className="form-label">Bubble Lifetime</label>
                           <input
                             type="number"
                             className="form-control"
-                            value={gameAnalytics.handMovements}
-                            onChange={(e) => setGameAnalytics({...gameAnalytics, handMovements: parseInt(e.target.value)})}
+                            step="0.1"
+                            value={reviewData.gameData.analytics.bubbleLifetime}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  bubbleLifetime: parseFloat(e.target.value)
+                                }
+                              }
+                            })}
                           />
                         </div>
                         <div className="col-md-6 mb-2">
-                          <label className="form-label">Leg Movements</label>
+                          <label className="form-label">Spawn Height</label>
                           <input
                             type="number"
                             className="form-control"
-                            value={gameAnalytics.legMovements}
-                            onChange={(e) => setGameAnalytics({...gameAnalytics, legMovements: parseInt(e.target.value)})}
+                            step="0.1"
+                            value={reviewData.gameData.analytics.spawnHeight}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  spawnHeight: parseFloat(e.target.value)
+                                }
+                              }
+                            })}
+                          />
+                        </div>
+                        <div className="col-md-6 mb-2">
+                          <label className="form-label">Number of Bubbles</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            value={reviewData.gameData.analytics.numBubbles}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  numBubbles: parseInt(e.target.value)
+                                }
+                              }
+                            })}
+                          />
+                        </div>
+                        <div className="col-md-6 mb-2">
+                          <label className="form-label">Bubble Size</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            step="0.1"
+                            value={reviewData.gameData.analytics.bubbleSize}
+                            onChange={(e) => setReviewData({
+                              ...reviewData,
+                              gameData: {
+                                ...reviewData.gameData,
+                                analytics: {
+                                  ...reviewData.gameData.analytics,
+                                  bubbleSize: parseFloat(e.target.value)
+                                }
+                              }
+                            })}
                           />
                         </div>
                       </div>
@@ -578,6 +716,7 @@ const InstructorDashboard = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleReviewSubmit}
+                  disabled={!selectedSessionForReview}
                 >
                   Submit Review
                 </button>
@@ -619,12 +758,14 @@ const InstructorDashboard = () => {
                     <div className="row">
                       <div className="col-md-6">
                         <p><strong>Score:</strong> {selectedSession.gameData.analytics.score}</p>
-                        <p><strong>Movements:</strong> {selectedSession.gameData.analytics.movements}</p>
-                        <p><strong>Steps:</strong> {selectedSession.gameData.analytics.steps}</p>
+                        <p><strong>Spawn Area Size:</strong> {selectedSession.gameData.analytics.spawnAreaSize}</p>
+                        <p><strong>Bubble Speed:</strong> {selectedSession.gameData.analytics.bubbleSpeedAction}</p>
+                        <p><strong>Bubble Lifetime:</strong> {selectedSession.gameData.analytics.bubbleLifetime}</p>
                       </div>
                       <div className="col-md-6">
-                        <p><strong>Hand Movements:</strong> {selectedSession.gameData.analytics.handMovements}</p>
-                        <p><strong>Leg Movements:</strong> {selectedSession.gameData.analytics.legMovements}</p>
+                        <p><strong>Spawn Height:</strong> {selectedSession.gameData.analytics.spawnHeight}</p>
+                        <p><strong>Number of Bubbles:</strong> {selectedSession.gameData.analytics.numBubbles}</p>
+                        <p><strong>Bubble Size:</strong> {selectedSession.gameData.analytics.bubbleSize}</p>
                       </div>
                     </div>
                   </div>

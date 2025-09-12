@@ -326,17 +326,30 @@ const TherapistDashboard = () => {
 
   const getDefaultConfigForGame = (game) => {
     const configurableFields = game.configurable_fields || [];
-    const defaultConfig = {
-      enabled: true,
-      difficulty: 'medium',
-      target_score: 20,
-      max_bubbles: 10,
-      spawn_area: {
-        x_min: -5, x_max: 5,
-        y_min: 1, y_max: 5,
-        z_min: -5, z_max: 5
+    let defaultConfig = {};
+    if (game.name === 'bubble_game') {
+      defaultConfig = {
+        enabled: true,
+        difficulty: 'medium',
+        game_name: game.name,
+        target_score: 20,
+        spawnAreaSize: 5,
+        bubbleSpeedAction: 5,
+        bubbleLifetime: 3,
+        spawnHeight: 3,
+        numBubbles: 10,
+        bubbleSize: 1
       }
-    };
+    }
+    else{
+      defaultConfig = {
+        enabled: true,
+        difficulty: 'medium',
+        game_name: game.name,
+        grid_size: "4X4",
+        time_limit: 60
+      }
+    }
 
     configurableFields.forEach(field => {
       if (field.default !== undefined) {
@@ -378,9 +391,10 @@ const TherapistDashboard = () => {
             type="number"
             className="form-control"
             value={config[field.name] || field.default}
-            onChange={(e) => handleGameConfigChange(game.name, field.name, parseInt(e.target.value))}
+            onChange={(e) => handleGameConfigChange(game.name, field.name, parseFloat(e.target.value))}
             min={field.min}
             max={field.max}
+            step={field.step || 1}
           />
         );
 
@@ -408,6 +422,127 @@ const TherapistDashboard = () => {
       default:
         return null;
     }
+  };
+
+  // Custom renderer for bubble game specific fields
+  const renderBubbleGameFields = (game, config) => {
+    if (game.name !== 'bubble_game') {
+      return game.configurable_fields?.map(field => (
+        <div key={field.name} className="mb-3">
+          <label className="form-label">
+            {field.name.replace('_', ' ').toUpperCase()}
+          </label>
+          {renderGameConfigField(game, field, config)}
+        </div>
+      ));
+    }
+
+    // Custom fields for bubble game
+    return (
+      <>
+        <div className="mb-3">
+          <label className="form-label">Difficulty</label>
+          <select
+            className="form-select"
+            value={config.difficulty || 'medium'}
+            onChange={(e) => handleGameConfigChange(game.name, 'difficulty', e.target.value)}
+          >
+            <option value="easy">Easy</option>
+            <option value="medium">Medium</option>
+            <option value="hard">Hard</option>
+          </select>
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Target Score</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.target_score || 20}
+            onChange={(e) => handleGameConfigChange(game.name, 'target_score', parseInt(e.target.value))}
+            min="5"
+            max="100"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Spawn Area Size</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.spawnAreaSize || 5}
+            onChange={(e) => handleGameConfigChange(game.name, 'spawnAreaSize', parseFloat(e.target.value))}
+            min="1"
+            max="10"
+            step="0.1"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Bubble Speed</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.bubbleSpeedAction || 5}
+            onChange={(e) => handleGameConfigChange(game.name, 'bubbleSpeedAction', parseFloat(e.target.value))}
+            min="1"
+            max="10"
+            step="0.1"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Bubble Lifetime</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.bubbleLifetime || 3}
+            onChange={(e) => handleGameConfigChange(game.name, 'bubbleLifetime', parseFloat(e.target.value))}
+            min="1"
+            max="10"
+            step="0.1"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Spawn Height</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.spawnHeight || 3}
+            onChange={(e) => handleGameConfigChange(game.name, 'spawnHeight', parseFloat(e.target.value))}
+            min="1"
+            max="10"
+            step="0.1"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Number of Bubbles</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.numBubbles || 10}
+            onChange={(e) => handleGameConfigChange(game.name, 'numBubbles', parseInt(e.target.value))}
+            min="1"
+            max="20"
+          />
+        </div>
+
+        <div className="mb-3">
+          <label className="form-label">Bubble Size</label>
+          <input
+            type="number"
+            className="form-control"
+            value={config.bubbleSize || 1}
+            onChange={(e) => handleGameConfigChange(game.name, 'bubbleSize', parseFloat(e.target.value))}
+            min="0.1"
+            max="5"
+            step="0.1"
+          />
+        </div>
+      </>
+    );
   };
 
   if (loading) {
@@ -734,15 +869,7 @@ const TherapistDashboard = () => {
                                 {config.enabled !== false && (
                                   <>
                                     <p className="text-muted small mb-3">{game.description}</p>
-                                    
-                                    {game.configurable_fields?.map(field => (
-                                      <div key={field.name} className="mb-3">
-                                        <label className="form-label">
-                                          {field.name.replace('_', ' ').toUpperCase()}
-                                        </label>
-                                        {renderGameConfigField(game, field, config)}
-                                      </div>
-                                    ))}
+                                    {renderBubbleGameFields(game, config)}
                                   </>
                                 )}
                               </div>
