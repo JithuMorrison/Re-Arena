@@ -6,10 +6,15 @@ const TherapistDashboard = () => {
   const [patients, setPatients] = useState([]);
   const [sessions, setSessions] = useState([]);
   const [games, setGames] = useState([]);
+  const [instructors, setInstructors] = useState([]);
+  const [reports, setReports] = useState([]);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [patientGames, setPatientGames] = useState({});
   const [showAddPatient, setShowAddPatient] = useState(false);
   const [showGameConfig, setShowGameConfig] = useState(false);
+  const [showAssignInstructor, setShowAssignInstructor] = useState(false);
+  const [showCreateReport, setShowCreateReport] = useState(false);
+  const [showPatientSessions, setShowPatientSessions] = useState(false);
   const [loading, setLoading] = useState(false);
   const [newPatient, setNewPatient] = useState({
     name: '',
@@ -17,12 +22,21 @@ const TherapistDashboard = () => {
     age: '',
     condition: ''
   });
+  const [reportData, setReportData] = useState({
+    title: '',
+    summary: '',
+    progress: '',
+    recommendations: '',
+    sessionIds: []
+  });
 
   useEffect(() => {
     if (currentUser) {
       fetchPatients();
       fetchSessions();
       fetchAvailableGames();
+      fetchInstructors();
+      fetchReports();
     }
   }, [currentUser]);
 
@@ -67,6 +81,30 @@ const TherapistDashboard = () => {
     }
   };
 
+  const fetchInstructors = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/therapist/instructors');
+      const data = await response.json();
+      if (response.ok) {
+        setInstructors(data.instructors);
+      }
+    } catch (error) {
+      console.error('Error fetching instructors:', error);
+    }
+  };
+
+  const fetchReports = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/therapist/reports?therapistId=${currentUser.id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setReports(data.reports);
+      }
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    }
+  };
+
   const fetchPatientGames = async (patientId) => {
     try {
       setLoading(true);
@@ -77,6 +115,21 @@ const TherapistDashboard = () => {
       }
     } catch (error) {
       console.error('Error fetching patient games:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPatientSessions = async (patientId) => {
+    try {
+      setLoading(true);
+      const response = await fetch(`http://localhost:5000/api/sessions?patientId=${patientId}&userType=therapist&userId=${currentUser.id}`);
+      const data = await response.json();
+      if (response.ok) {
+        setSessions(data.sessions);
+      }
+    } catch (error) {
+      console.error('Error fetching patient sessions:', error);
     } finally {
       setLoading(false);
     }
@@ -114,10 +167,57 @@ const TherapistDashboard = () => {
     }
   };
 
+  const handleAssignInstructor = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      const formData = new FormData(e.target);
+      const instructorId = formData.get('instructorId');
+      
+      const response = await fetch('http://localhost:5000/api/therapist/assign-instructor', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          therapistId: currentUser.id,
+          patientId: selectedPatient._id,
+          instructorId: instructorId
+        }),
+      });
+      
+      const data = await response.json();
+      if (response.ok) {
+        alert('Instructor assigned successfully!');
+        setShowAssignInstructor(false);
+        // Update patient data
+        fetchPatients();
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error assigning instructor:', error);
+      alert('Error assigning instructor');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleConfigureGames = async (patient) => {
     setSelectedPatient(patient);
     await fetchPatientGames(patient._id);
     setShowGameConfig(true);
+  };
+
+  const handleViewSessions = async (patient) => {
+    setSelectedPatient(patient);
+    await fetchPatientSessions(patient._id);
+    setShowPatientSessions(true);
+  };
+
+  const handleCreateReport = async (patient) => {
+    setSelectedPatient(patient);
+    setShowCreateReport(true);
   };
 
   const handleGameConfigChange = (gameName, field, value) => {
@@ -174,6 +274,56 @@ const TherapistDashboard = () => {
     }
   };
 
+  const handleCreateReportSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setLoading(true);
+      
+      // Get selected session IDs from the form
+      const formData = new FormData(e.target);
+      const selectedSessions = formData.getAll('sessionIds');
+      
+      const response = await fetch('http://localhost:5000/api/therapist/create-report', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          therapistId: currentUser.id,
+          patientId: selectedPatient._id,
+          reportData: {
+            title: formData.get('title'),
+            summary: formData.get('summary'),
+            progress: formData.get('progress'),
+            recommendations: formData.get('recommendations')
+          },
+          sessionIds: selectedSessions
+        }),
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        alert('Report created successfully!');
+        setShowCreateReport(false);
+        setReportData({
+          title: '',
+          summary: '',
+          progress: '',
+          recommendations: '',
+          sessionIds: []
+        });
+        fetchReports();
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating report:', error);
+      alert('Error creating report');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const getDefaultConfigForGame = (game) => {
     const configurableFields = game.configurable_fields || [];
     const defaultConfig = {
@@ -188,7 +338,6 @@ const TherapistDashboard = () => {
       }
     };
 
-    // Set defaults from game definition
     configurableFields.forEach(field => {
       if (field.default !== undefined) {
         defaultConfig[field.name] = field.default;
@@ -466,13 +615,72 @@ const TherapistDashboard = () => {
                                   >
                                     Configure Games
                                   </button>
-                                  <button className="btn btn-sm btn-outline-secondary">
+                                  <button 
+                                    className="btn btn-sm btn-outline-info"
+                                    onClick={() => handleViewSessions(patient)}
+                                  >
                                     View Sessions
+                                  </button>
+                                  <button 
+                                    className="btn btn-sm btn-outline-success"
+                                    onClick={() => setShowAssignInstructor(patient)}
+                                  >
+                                    Assign Instructor
+                                  </button>
+                                  <button 
+                                    className="btn btn-sm btn-outline-warning"
+                                    onClick={() => handleCreateReport(patient)}
+                                  >
+                                    Create Report
                                   </button>
                                 </div>
                               </td>
                             </tr>
                           ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Reports Section */}
+          <div className="row mb-4">
+            <div className="col-12">
+              <h4 className="mb-3">Patient Reports</h4>
+              <div className="card">
+                <div className="card-body">
+                  {reports.length === 0 ? (
+                    <p className="text-center">No reports found.</p>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>Patient</th>
+                            <th>Title</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {reports.map(report => {
+                            const patient = patients.find(p => p._id === report.patientId);
+                            return (
+                              <tr key={report._id}>
+                                <td>{patient ? patient.name : 'Unknown'}</td>
+                                <td>{report.reportData?.title || 'Untitled Report'}</td>
+                                <td>{new Date(report.createdAt).toLocaleDateString()}</td>
+                                <td>
+                                  <button className="btn btn-sm btn-outline-primary">
+                                    View Report
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -560,6 +768,211 @@ const TherapistDashboard = () => {
                       disabled={loading}
                     >
                       {loading ? 'Saving...' : 'Save Configuration'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Assign Instructor Modal */}
+          {showAssignInstructor && selectedPatient && (
+            <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">
+                      Assign Instructor to {selectedPatient.name}
+                    </h5>
+                    <button 
+                      type="button" 
+                      className="btn-close"
+                      onClick={() => setShowAssignInstructor(false)}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <form onSubmit={handleAssignInstructor}>
+                      <div className="mb-3">
+                        <label className="form-label">Select Instructor</label>
+                        <select name="instructorId" className="form-select" required>
+                          <option value="">Select an instructor</option>
+                          {instructors.map(instructor => (
+                            <option key={instructor._id} value={instructor.userId}>
+                              {instructor.name} - {instructor.email}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="d-flex gap-2">
+                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                          {loading ? 'Assigning...' : 'Assign Instructor'}
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary"
+                          onClick={() => setShowAssignInstructor(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Create Report Modal */}
+          {showCreateReport && selectedPatient && (
+            <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-lg">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">
+                      Create Report for {selectedPatient.name}
+                    </h5>
+                    <button 
+                      type="button" 
+                      className="btn-close"
+                      onClick={() => setShowCreateReport(false)}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <form onSubmit={handleCreateReportSubmit}>
+                      <div className="mb-3">
+                        <label className="form-label">Report Title</label>
+                        <input 
+                          type="text" 
+                          name="title"
+                          className="form-control" 
+                          required 
+                        />
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Summary</label>
+                        <textarea 
+                          name="summary"
+                          className="form-control" 
+                          rows="3" 
+                          required 
+                        ></textarea>
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Progress Assessment</label>
+                        <textarea 
+                          name="progress"
+                          className="form-control" 
+                          rows="3" 
+                          required 
+                        ></textarea>
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Recommendations</label>
+                        <textarea 
+                          name="recommendations"
+                          className="form-control" 
+                          rows="3" 
+                          required 
+                        ></textarea>
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Include Sessions</label>
+                        <div className="border p-2" style={{maxHeight: '200px', overflowY: 'auto'}}>
+                          {sessions.filter(s => s.patientId === selectedPatient._id).map(session => (
+                            <div key={session._id} className="form-check">
+                              <input 
+                                className="form-check-input" 
+                                type="checkbox" 
+                                name="sessionIds"
+                                value={session._id} 
+                                id={`session-${session._id}`}
+                              />
+                              <label className="form-check-label" htmlFor={`session-${session._id}`}>
+                                {new Date(session.date).toLocaleDateString()} - {session.gameData?.gameName || 'Unknown Game'}
+                              </label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="d-flex gap-2">
+                        <button type="submit" className="btn btn-primary" disabled={loading}>
+                          {loading ? 'Creating...' : 'Create Report'}
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary"
+                          onClick={() => setShowCreateReport(false)}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Patient Sessions Modal */}
+          {showPatientSessions && selectedPatient && (
+            <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+              <div className="modal-dialog modal-xl">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">
+                      Sessions for {selectedPatient.name}
+                    </h5>
+                    <button 
+                      type="button" 
+                      className="btn-close"
+                      onClick={() => setShowPatientSessions(false)}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="table-responsive">
+                      <table className="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>Date</th>
+                            <th>Game</th>
+                            <th>Score</th>
+                            <th>Rating</th>
+                            <th>Review</th>
+                            <th>Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sessions.filter(s => s.patientId === selectedPatient._id).map(session => (
+                            <tr key={session._id}>
+                              <td>{new Date(session.date).toLocaleDateString()}</td>
+                              <td>{session.gameData?.gameName || 'Unknown'}</td>
+                              <td>{session.gameData?.score || 'N/A'}</td>
+                              <td>
+                                <span className={`badge ${session.rating >= 4 ? 'bg-success' : session.rating >= 3 ? 'bg-warning' : 'bg-danger'}`}>
+                                  {session.rating || 'N/A'}/5
+                                </span>
+                              </td>
+                              <td className="text-truncate" style={{ maxWidth: '200px' }}>
+                                {session.review || 'No review'}
+                              </td>
+                              <td>
+                                <span className={`badge ${session.status === 'active' ? 'bg-primary' : 'bg-success'}`}>
+                                  {session.status || 'unknown'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button 
+                      type="button" 
+                      className="btn btn-secondary"
+                      onClick={() => setShowPatientSessions(false)}
+                    >
+                      Close
                     </button>
                   </div>
                 </div>

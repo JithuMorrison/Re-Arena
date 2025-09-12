@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 
 const AuthContext = createContext();
 
@@ -10,6 +10,15 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    // Check if user is logged in from localStorage
+    const savedUser = localStorage.getItem('currentUser');
+    if (savedUser) {
+      setCurrentUser(JSON.parse(savedUser));
+    }
+    setLoading(false);
+  }, []);
+
   const login = async (email, password) => {
     setLoading(true);
     try {
@@ -20,10 +29,11 @@ export function AuthProvider({ children }) {
         },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
       if (response.ok) {
         setCurrentUser(data.user);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
         return { success: true, data: data.user };
       } else {
         return { success: false, error: data.error };
@@ -45,10 +55,12 @@ export function AuthProvider({ children }) {
         },
         body: JSON.stringify(userData),
       });
-      
+
       const data = await response.json();
       if (response.ok) {
-        return { success: true, data };
+        setCurrentUser(data.user);
+        localStorage.setItem('currentUser', JSON.stringify(data.user));
+        return { success: true, data: data.user };
       } else {
         return { success: false, error: data.error };
       }
@@ -61,6 +73,7 @@ export function AuthProvider({ children }) {
 
   const logout = () => {
     setCurrentUser(null);
+    localStorage.removeItem('currentUser');
   };
 
   const value = {
@@ -68,7 +81,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
-    loading
+    loading,
   };
 
   return (
