@@ -69,7 +69,7 @@ const InstructorDashboard = () => {
         setUserData(data.user);
         // Fetch sessions for this user
         const sessionsResponse = await fetch(
-          `http://localhost:5000/api/sessions?patientId=${data.user._id}&userType=instructor`
+          `http://localhost:5000/api/sessions?patientId=${data.user._id}&userType=instructor&userId=${currentUser.id}`
         );
         const sessionsData = await sessionsResponse.json();
         if (sessionsResponse.ok) {
