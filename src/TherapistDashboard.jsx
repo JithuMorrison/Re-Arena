@@ -230,14 +230,14 @@ const TherapistDashboard = () => {
     }));
   };
 
-  const handleSpawnAreaChange = (gameName, axis, value) => {
+  const handleNestedFieldChange = (gameName, parentField, childField, value) => {
     setPatientGames(prev => ({
       ...prev,
       [gameName]: {
         ...prev[gameName],
-        spawn_area: {
-          ...(prev[gameName]?.spawn_area || {}),
-          [axis]: parseFloat(value) || 0
+        [parentField]: {
+          ...(prev[gameName]?.[parentField] || {}),
+          [childField]: parseFloat(value) || 0
         }
       }
     }));
@@ -346,8 +346,6 @@ const TherapistDashboard = () => {
         enabled: true,
         difficulty: 'medium',
         game_name: game.name,
-        grid_size: "4X4",
-        time_limit: 60
       }
     }
 
@@ -399,7 +397,7 @@ const TherapistDashboard = () => {
         );
 
       case 'object':
-        if (field.name === 'spawn_area') {
+        if (field.name === 'lights_green_prob') {
           return (
             <div className="spawn-area-config">
               {field.fields.map(subField => (
@@ -409,8 +407,8 @@ const TherapistDashboard = () => {
                     type="number"
                     className="form-control"
                     step="0.1"
-                    value={config.spawn_area?.[subField.name] || subField.default}
-                    onChange={(e) => handleSpawnAreaChange(game.name, subField.name, e.target.value)}
+                    value={patientGames[game.name]?.lights_green_prob?.[subField.name] ?? subField.default}
+                    onChange={(e) => handleNestedFieldChange(game.name, "lights_green_prob", subField.name, e.target.value)}
                   />
                 </div>
               ))}
