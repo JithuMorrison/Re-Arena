@@ -23,8 +23,16 @@ const Home = () => {
     navigate('/login', { state: { userType: 'instructor' } });
   };
 
+  const handleGoToDashboard = () => {
+    if (currentUser) {
+      navigate(currentUser.userType === 'therapist' ? '/therapist' : '/instructor');
+    } else {
+      navigate('/login');
+    }
+  };
+
   return (
-    <div className="home-page">
+    <div className="home-page" style={{paddingTop: '80px'}}>
       {/* Hero Section */}
       <div className="hero-section position-relative overflow-hidden">
         <div className="container">
@@ -38,55 +46,35 @@ const Home = () => {
                   A comprehensive platform connecting therapists, instructors, and clients for seamless rehabilitation management
                 </p>
                 <div className="d-flex flex-wrap gap-3">
-                  {currentUser ? (
-                    currentUser.userType === 'therapist' ? (
-                      <button 
-                        className="btn btn-light btn-lg px-4 d-flex align-items-center"
-                        onClick={() => navigate('/therapist')}
-                      >
-                        <i className="bi bi-speedometer2 me-2"></i>
-                        Go to Dashboard
-                      </button>
-                    ) : (
-                      <button 
-                        className="btn btn-primary btn-lg px-4 d-flex align-items-center"
-                        onClick={handleTherapistLogin}
-                      >
-                        <i className="bi bi-lock me-2"></i>
-                        Therapist Login
-                      </button>
-                    )
-                  ) : (
-                    <button 
-                      className="btn btn-primary btn-lg px-4 d-flex align-items-center"
-                      onClick={handleTherapistLogin}
-                    >
-                      <i className="bi bi-person-check me-2"></i>
-                      Therapist Login
-                    </button>
-                  )}
+                  <button 
+                    className="btn btn-light btn-lg px-4 d-flex align-items-center"
+                    onClick={handleGoToDashboard}
+                  >
+                    <i className="bi bi-speedometer2 me-2"></i>
+                    {currentUser ? 'Go to Dashboard' : 'View Dashboard'}
+                  </button>
                   
                   <button 
                     className="btn btn-outline-light btn-lg px-4 d-flex align-items-center"
-                    onClick={() => document.getElementById('user-code-section').scrollIntoView({ behavior: 'smooth' })}
+                    onClick={() => document.getElementById('user-access-section').scrollIntoView({ behavior: 'smooth' })}
                   >
                     <i className="bi bi-code-square me-2"></i>
-                    Access Code
+                    Enter Access Code
                   </button>
                 </div>
               </div>
             </div>
             <div className="col-lg-5">
               <div className="hero-illustration position-relative">
-                <div className="floating-card card border-0 shadow-lg">
+                <div className="floating-card card border-0 shadow-lg" style={{ zIndex: 0 }}>
                   <div className="card-body p-4">
                     <div className="d-flex align-items-center mb-3">
-                      <div className="icon-wrapper bg-primary bg-opacity-10 rounded-circle p-3 me-3">
-                        <i className="bi bi-graph-up text-primary fs-3"></i>
+                      <div className="icon-wrapper bg-primary bg-opacity-10 rounded-circle me-3" style={{paddingLeft:'10px', paddingTop: '2px'}}>
+                        <i className="bi bi-clipboard-data text-primary fs-3"></i>
                       </div>
                       <div>
-                        <h5 className="mb-0">Progress Tracking</h5>
-                        <small className="text-muted">Real-time monitoring</small>
+                        <h5 className="mb-0">Progress Overview</h5>
+                        <small className="text-muted">Weekly summary</small>
                       </div>
                     </div>
                     <div className="progress mb-4" style={{ height: '8px' }}>
@@ -94,29 +82,29 @@ const Home = () => {
                     </div>
                     <div className="stats-grid">
                       <div className="stat-item text-center">
-                        <div className="stat-value text-primary">95%</div>
-                        <div className="stat-label text-muted small">Success Rate</div>
+                        <div className="stat-value text-primary">28</div>
+                        <div className="stat-label text-muted small">Active Patients</div>
                       </div>
                       <div className="stat-item text-center">
-                        <div className="stat-value text-success">24/7</div>
-                        <div className="stat-label text-muted small">Support</div>
+                        <div className="stat-value text-success">95%</div>
+                        <div className="stat-label text-muted small">Completion Rate</div>
                       </div>
                       <div className="stat-item text-center">
-                        <div className="stat-value text-info">1+</div>
-                        <div className="stat-label text-muted small">Active Users</div>
+                        <div className="stat-value text-info">48</div>
+                        <div className="stat-label text-muted small">Sessions This Week</div>
                       </div>
                     </div>
                   </div>
                 </div>
-                {/* Floating Elements */}
-                <div className="floating-element floating-1">
+                {/* Floating Elements - Positioned to avoid text overlap */}
+                <div className="floating-element floating-1" style={{ top: '10%', right: '25%' }}>
                   <i className="bi bi-heart-pulse text-danger"></i>
                 </div>
-                <div className="floating-element floating-2">
+                <div className="floating-element floating-2" style={{ bottom: '50%', left: '0%' }}>
                   <i className="bi bi-star-fill text-warning"></i>
                 </div>
-                <div className="floating-element floating-3">
-                  <i className="bi bi-shield-check text-success"></i>
+                <div className="floating-element floating-3" style={{ top: '30%', right: '5%' }}>
+                  <i className="bi bi-activity text-success"></i>
                 </div>
               </div>
             </div>
@@ -205,25 +193,25 @@ const Home = () => {
               <div className="card-body p-4">
                 <div className="feature-icon-wrapper mb-4">
                   <div className="icon-circle bg-info bg-opacity-10">
-                    <i className="bi bi-shield-check text-info fs-2"></i>
+                    <i className="bi bi-calendar-check text-info fs-2"></i>
                   </div>
                 </div>
-                <h4 className="fw-bold mb-3">Secure Platform</h4>
+                <h4 className="fw-bold mb-3">Session Management</h4>
                 <p className="text-muted mb-4">
-                  HIPAA-compliant secure platform ensuring patient data privacy and confidentiality at all times.
+                  Efficiently schedule, track, and manage therapy sessions for all your patients in one centralized system.
                 </p>
                 <ul className="list-unstyled text-muted">
                   <li className="mb-2">
                     <i className="bi bi-check-circle-fill text-success me-2"></i>
-                    End-to-end encryption
+                    Session based training
                   </li>
                   <li className="mb-2">
                     <i className="bi bi-check-circle-fill text-success me-2"></i>
-                    Role-based access control
+                    Report Generation
                   </li>
                   <li className="mb-2">
                     <i className="bi bi-check-circle-fill text-success me-2"></i>
-                    Secure data storage
+                    Progress tracking
                   </li>
                 </ul>
               </div>
@@ -297,15 +285,16 @@ const Home = () => {
                           className="btn btn-primary btn-lg w-100 d-flex align-items-center justify-content-center"
                           onClick={() => navigate('/therapist')}
                         >
-                          <i className="bi bi-box-arrow-in-right me-2"></i>
-                          Enter Dashboard
+                          <i className="bi bi-speedometer2 me-2"></i>
+                          Go to Dashboard
                         </button>
                       ) : (
                         <button 
                           className="btn btn-outline-primary btn-lg w-100"
                           onClick={handleTherapistLogin}
                         >
-                          Switch to Therapist Account
+                          <i className="bi bi-person-check me-2"></i>
+                          Therapist Login
                         </button>
                       )
                     ) : (
@@ -378,15 +367,16 @@ const Home = () => {
                           className="btn btn-success btn-lg w-100 d-flex align-items-center justify-content-center"
                           onClick={() => navigate('/instructor')}
                         >
-                          <i className="bi bi-box-arrow-in-right me-2"></i>
-                          Enter Dashboard
+                          <i className="bi bi-speedometer2 me-2"></i>
+                          Go to Dashboard
                         </button>
                       ) : (
                         <button 
                           className="btn btn-outline-success btn-lg w-100"
                           onClick={handleInstructorLogin}
                         >
-                          Switch to Instructor Account
+                          <i className="bi bi-people me-2"></i>
+                          Instructor Login
                         </button>
                       )
                     ) : (
@@ -406,8 +396,8 @@ const Home = () => {
         </div>
       </div>
 
-      {/* User Code Access Section */}
-      <div id="user-code-section" className="container py-5 my-5">
+      {/* User Access Section */}
+      <div id="user-access-section" className="container py-5 my-5">
         <div className="row justify-content-center">
           <div className="col-lg-8">
             <div className="access-card card border-0 shadow-lg">
@@ -415,24 +405,24 @@ const Home = () => {
                 <div className="text-center mb-5">
                   <div className="access-icon-wrapper mb-4">
                     <div className="icon-circle bg-warning bg-opacity-10 mx-auto">
-                      <i className="bi bi-key-fill text-warning fs-1"></i>
+                      <i className="bi bi-person-circle text-warning fs-1"></i>
                     </div>
                   </div>
-                  <h2 className="fw-bold mb-3">Access Your Dashboard</h2>
+                  <h2 className="fw-bold mb-3">Patient Access</h2>
                   <p className="text-muted lead mb-0">
-                    Enter your unique user code to view your personalized therapy progress and session history
+                    Enter your access code to view your personalized therapy progress and session history
                   </p>
                 </div>
 
                 <form onSubmit={handleUserCodeSubmit}>
                   <div className="input-group input-group-lg mb-4">
                     <span className="input-group-text bg-light border-end-0">
-                      <i className="bi bi-code-slash text-primary"></i>
+                      <i className="bi bi-ticket-perforated text-primary"></i>
                     </span>
                     <input 
                       type="text" 
                       className="form-control border-start-0 border-end-0 py-3 px-3" 
-                      placeholder="Enter your unique user code (e.g., ABCD-1234-EFGH)" 
+                      placeholder="Enter your access code (e.g., ABCD-1234)" 
                       value={userCode}
                       onChange={(e) => setUserCode(e.target.value)}
                       required
@@ -442,18 +432,14 @@ const Home = () => {
                       type="submit"
                     >
                       <i className="bi bi-arrow-right-circle me-2"></i>
-                      Access
+                      View Progress
                     </button>
                   </div>
                   
                   <div className="text-center">
                     <small className="text-muted d-block mb-2">
                       <i className="bi bi-info-circle me-1"></i>
-                      Don't have a code? Contact your therapist for access
-                    </small>
-                    <small className="text-muted">
-                      <i className="bi bi-shield-lock me-1"></i>
-                      Your data is securely encrypted and protected
+                      Get your access code from your therapist
                     </small>
                   </div>
                 </form>
@@ -461,23 +447,23 @@ const Home = () => {
                 <div className="row mt-5 pt-4 border-top">
                   <div className="col-md-4 text-center mb-3">
                     <div className="text-primary">
-                      <i className="bi bi-shield-check fs-2 mb-2"></i>
-                      <h6 className="fw-bold mb-1">Secure Access</h6>
-                      <small className="text-muted">End-to-end encryption</small>
+                      <i className="bi bi-calendar-check fs-2 mb-2"></i>
+                      <h6 className="fw-bold mb-1">Session History</h6>
+                      <small className="text-muted">View past sessions</small>
                     </div>
                   </div>
                   <div className="col-md-4 text-center mb-3">
                     <div className="text-success">
                       <i className="bi bi-graph-up fs-2 mb-2"></i>
                       <h6 className="fw-bold mb-1">Progress Tracking</h6>
-                      <small className="text-muted">Real-time updates</small>
+                      <small className="text-muted">Monitor improvements</small>
                     </div>
                   </div>
                   <div className="col-md-4 text-center mb-3">
                     <div className="text-info">
-                      <i className="bi bi-clock-history fs-2 mb-2"></i>
-                      <h6 className="fw-bold mb-1">24/7 Access</h6>
-                      <small className="text-muted">Anytime, anywhere</small>
+                      <i className="bi bi-journal-text fs-2 mb-2"></i>
+                      <h6 className="fw-bold mb-1">Exercise Plans</h6>
+                      <small className="text-muted">View assigned exercises</small>
                     </div>
                   </div>
                 </div>
@@ -528,11 +514,12 @@ const Home = () => {
           background: rgba(255, 255, 255, 0.95);
           backdrop-filter: blur(10px);
           animation: float 6s ease-in-out infinite;
+          position: relative;
         }
         
         @keyframes float {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-20px); }
+          50% { transform: translateY(-15px); }
         }
         
         .floating-element {
@@ -543,6 +530,7 @@ const Home = () => {
           display: flex;
           align-items: center;
           justify-content: center;
+          z-index: 1;
           animation: floatElement 8s ease-in-out infinite;
         }
         
@@ -550,34 +538,40 @@ const Home = () => {
           font-size: 1.5rem;
         }
         
+        /* Fixed positions for floating elements to avoid text overlap */
+        .hero-illustration {
+          position: relative;
+          min-height: 300px;
+        }
+        
         .floating-1 {
           width: 60px;
           height: 60px;
-          top: 20%;
-          left: 10%;
           animation-delay: 0s;
         }
         
         .floating-2 {
           width: 40px;
           height: 40px;
-          top: 60%;
-          right: 15%;
           animation-delay: 2s;
         }
         
         .floating-3 {
           width: 50px;
           height: 50px;
-          bottom: 20%;
-          left: 20%;
           animation-delay: 4s;
         }
         
         @keyframes floatElement {
-          0%, 100% { transform: translate(0, 0) rotate(0deg); }
-          33% { transform: translate(20px, -20px) rotate(120deg); }
-          66% { transform: translate(-15px, 10px) rotate(240deg); }
+          0%, 100% { 
+            transform: translate(0, 0) rotate(0deg); 
+          }
+          33% { 
+            transform: translate(10px, -15px) rotate(120deg); 
+          }
+          66% { 
+            transform: translate(-5px, 5px) rotate(240deg); 
+          }
         }
         
         .icon-wrapper {
@@ -643,6 +637,7 @@ const Home = () => {
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.05);
           animation: pulse 4s ease-in-out infinite;
+          z-index: 0;
         }
         
         .hero-bg-1 {
@@ -664,14 +659,27 @@ const Home = () => {
         .hero-bg-3 {
           width: 150px;
           height: 150px;
-          top: 50%;
-          right: 10%;
+          top: 30%;
+          left: 5%;
           animation-delay: 2s;
         }
         
         @keyframes pulse {
-          0%, 100% { opacity: 0.1; transform: scale(1); }
-          50% { opacity: 0.2; transform: scale(1.1); }
+          0%, 100% { 
+            opacity: 0.1; 
+            transform: scale(1); 
+          }
+          50% { 
+            opacity: 0.15; 
+            transform: scale(1.05); 
+          }
+        }
+        
+        /* Ensure text readability over animations */
+        .hero-content,
+        .floating-card {
+          position: relative;
+          z-index: 2;
         }
       `}</style>
       
