@@ -708,6 +708,190 @@ const TherapistDashboard = () => {
     return defaultConfig;
   };
 
+  const initializeGameConfig = (game) => {
+    const defaultConfig = getDefaultConfigForGame(game);
+    setPatientGames(prev => ({
+      ...prev,
+      [game.name]: prev[game.name] || defaultConfig
+    }));
+  };
+
+  const renderGameConfigField = (game, field, config) => {
+    switch (field.type) {
+      case 'select':
+        return (
+          <select
+            className="form-select form-select-sm"
+            value={config[field.name] || field.default}
+            onChange={(e) => handleGameConfigChange(game.name, field.name, e.target.value)}
+          >
+            {field.options.map(option => (
+              <option key={option} value={option}>
+                {option.charAt(0).toUpperCase() + option.slice(1)}
+              </option>
+            ))}
+          </select>
+        );
+
+      case 'number':
+        return (
+          <input
+            type="number"
+            className="form-control form-control-sm"
+            value={config[field.name] || field.default}
+            onChange={(e) => handleGameConfigChange(game.name, field.name, parseFloat(e.target.value))}
+            min={field.min}
+            max={field.max}
+            step={field.step || 1}
+          />
+        );
+
+      case 'object':
+        if (field.name === 'lights_green_prob') {
+          return (
+            <div className="spawn-area-config">
+              {field.fields.map(subField => (
+                <div key={subField.name} className="input-group input-group-sm mb-2">
+                  <span className="input-group-text bg-light">{subField.name.replace('_', ' ').toUpperCase()}</span>
+                  <input
+                    type="number"
+                    className="form-control"
+                    step="0.1"
+                    value={patientGames[game.name]?.lights_green_prob?.[subField.name] ?? subField.default}
+                    onChange={(e) => handleNestedFieldChange(game.name, "lights_green_prob", subField.name, e.target.value)}
+                  />
+                </div>
+              ))}
+            </div>
+          );
+        }
+        return null;
+
+      default:
+        return null;
+    }
+  };
+
+  const renderBubbleGameFields = (game, config) => {
+    if (game.name !== 'bubble_game') {
+      return game.configurable_fields?.map(field => (
+        <div key={field.name} className="mb-2">
+          <label className="form-label small mb-1">
+            {field.name.replace('_', ' ').toUpperCase()}
+          </label>
+          {renderGameConfigField(game, field, config)}
+        </div>
+      ));
+    }
+
+    return (
+      <>
+        <div className="row">
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Difficulty</label>
+            <select
+              className="form-select form-select-sm"
+              value={config.difficulty || 'medium'}
+              onChange={(e) => handleGameConfigChange(game.name, 'difficulty', e.target.value)}
+            >
+              <option value="easy">Easy</option>
+              <option value="medium">Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Target Score</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.target_score || 20}
+              onChange={(e) => handleGameConfigChange(game.name, 'target_score', parseInt(e.target.value))}
+              min="5"
+              max="100"
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Spawn Area Size</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.spawnAreaSize || 5}
+              onChange={(e) => handleGameConfigChange(game.name, 'spawnAreaSize', parseFloat(e.target.value))}
+              min="1"
+              max="10"
+              step="0.1"
+            />
+          </div>
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Bubble Speed</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.bubbleSpeedAction || 5}
+              onChange={(e) => handleGameConfigChange(game.name, 'bubbleSpeedAction', parseFloat(e.target.value))}
+              min="1"
+              max="10"
+              step="0.1"
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Bubble Lifetime</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.bubbleLifetime || 3}
+              onChange={(e) => handleGameConfigChange(game.name, 'bubbleLifetime', parseFloat(e.target.value))}
+              min="1"
+              max="10"
+              step="0.1"
+            />
+          </div>
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Spawn Height</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.spawnHeight || 3}
+              onChange={(e) => handleGameConfigChange(game.name, 'spawnHeight', parseFloat(e.target.value))}
+              min="1"
+              max="10"
+              step="0.1"
+            />
+          </div>
+        </div>
+        <div className="row">
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Number of Bubbles</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.numBubbles || 10}
+              onChange={(e) => handleGameConfigChange(game.name, 'numBubbles', parseInt(e.target.value))}
+              min="1"
+              max="20"
+            />
+          </div>
+          <div className="col-md-6 mb-2">
+            <label className="form-label small mb-1">Bubble Size</label>
+            <input
+              type="number"
+              className="form-control form-control-sm"
+              value={config.bubbleSize || 1}
+              onChange={(e) => handleGameConfigChange(game.name, 'bubbleSize', parseFloat(e.target.value))}
+              min="0.1"
+              max="5"
+              step="0.1"
+            />
+          </div>
+        </div>
+      </>
+    );
+  };
+
   const StatCard = ({ title, value, icon, color, subtitle }) => (
     <div className="card border-0 shadow-sm h-100">
       <div className="card-body">
@@ -780,32 +964,7 @@ const TherapistDashboard = () => {
   }
 
   return (
-    <div className="container-fluid p-0 bg-light min-vh-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm border-bottom">
-        <div className="container-fluid">
-          <div className="d-flex justify-content-between align-items-center py-3">
-            <div>
-              <h2 className="mb-0">
-                <i className="bi bi-heart-pulse text-primary me-2"></i>
-                Therapist Dashboard
-              </h2>
-              <p className="text-muted mb-0">Welcome back, {currentUser?.name}</p>
-            </div>
-            <div className="d-flex gap-3">
-              <button className="btn btn-outline-primary">
-                <i className="bi bi-bell me-2"></i>
-                Notifications
-              </button>
-              <button className="btn btn-primary">
-                <i className="bi bi-person-circle me-2"></i>
-                Profile
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+    <div className="container-fluid p-0 bg-light min-vh-100" style={{marginTop: '100px'}}>
       {/* Main Content */}
       <div className="container-fluid py-4">
         {/* Stats Cards */}
@@ -1476,9 +1635,9 @@ const TherapistDashboard = () => {
       {/* Modals */}
       {/* Game Configuration Modal */}
       {showGameConfig && selectedPatient && (
-        <div className="modal fade show d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }} tabIndex="-1">
+        <div className="modal fade show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-dialog modal-xl modal-dialog-scrollable">
-            <div className="modal-content border-0 shadow-lg">
+            <div className="modal-content">
               <div className="modal-header bg-primary text-white">
                 <h5 className="modal-title">
                   <i className="bi bi-gear me-2"></i>
@@ -1498,27 +1657,27 @@ const TherapistDashboard = () => {
                 </div>
                 <div className="row">
                   {games.map(game => {
-                    const defaultConfig = getDefaultConfigForGame(game);
-                    const config = patientGames[game.name] || defaultConfig;
+                    const config = patientGames[game.name] || getDefaultConfigForGame(game);
                     return (
                       <div key={game.name} className="col-md-6 mb-4">
                         <div className="card border-0 shadow-sm h-100">
                           <div className="card-header bg-white border-bottom">
-                            <div className="d-flex justify-content-between align-items-center">
-                              <div className="form-check form-switch form-switch-lg">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  role="switch"
-                                  checked={config.enabled !== false}
-                                  onChange={(e) => handleGameConfigChange(game.name, 'enabled', e.target.checked)}
-                                  disabled={loading}
-                                />
-                                <label className="form-check-label fw-bold">
-                                  <i className="bi bi-controller me-2"></i>
-                                  {game.display_name || game.name}
-                                </label>
-                              </div>
+                            <div className="form-check form-switch form-switch-lg">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                checked={config.enabled !== false}
+                                onChange={(e) => {
+                                  initializeGameConfig(game);
+                                  handleGameConfigChange(game.name, 'enabled', e.target.checked);
+                                }}
+                                disabled={loading}
+                              />
+                              <label className="form-check-label fw-bold">
+                                <i className="bi bi-controller me-2"></i>
+                                {game.display_name || game.name}
+                              </label>
                             </div>
                           </div>
                           <div className="card-body">
@@ -1526,31 +1685,7 @@ const TherapistDashboard = () => {
                               <>
                                 <p className="text-muted small mb-3">{game.description}</p>
                                 <div className="border-top pt-3">
-                                  <div className="row g-3">
-                                    <div className="col-md-6">
-                                      <label className="form-label">Difficulty Level</label>
-                                      <select
-                                        className="form-select"
-                                        value={config.difficulty || 'medium'}
-                                        onChange={(e) => handleGameConfigChange(game.name, 'difficulty', e.target.value)}
-                                      >
-                                        <option value="easy">Easy</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="hard">Hard</option>
-                                      </select>
-                                    </div>
-                                    <div className="col-md-6">
-                                      <label className="form-label">Target Score</label>
-                                      <input
-                                        type="number"
-                                        className="form-control"
-                                        value={config.target_score || 20}
-                                        onChange={(e) => handleGameConfigChange(game.name, 'target_score', parseInt(e.target.value))}
-                                        min="5"
-                                        max="100"
-                                      />
-                                    </div>
-                                  </div>
+                                  {renderBubbleGameFields(game, config)}
                                 </div>
                               </>
                             )}
