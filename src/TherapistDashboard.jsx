@@ -984,7 +984,7 @@ const TherapistDashboard = () => {
               value={sessions.length} 
               icon="calendar-check" 
               color="#1cc88a"
-              subtitle="This month"
+              subtitle="conducted sessions"
             />
           </div>
           <div className="col-xl-3 col-md-6">
@@ -1001,11 +1001,44 @@ const TherapistDashboard = () => {
           </div>
           <div className="col-xl-3 col-md-6">
             <StatCard 
+              title="Avg. Score" 
+              value={sessions.length > 0 
+                ? (sessions.reduce((sum, session) => sum + (session.gameData.score || 0), 0) / sessions.length).toFixed(1)
+                : '0.0'
+              }
+              icon="star-fill" 
+              color="#5af63e"
+              subtitle="rehabilitation performance"
+            />
+          </div>
+          <div className="col-xl-3 col-md-6">
+            <StatCard 
+              title="Max Score" 
+              value={sessions.length > 0 
+                ? (sessions.reduce((max, session) => Math.max(max,session.gameData.score || 0), 0)).toFixed(1)
+                : '0.0'
+              }
+              icon="star-fill" 
+              color="#3ef6f3"
+              subtitle="most achieved score"
+            />
+          </div>
+          <div className="col-xl-3 col-md-6">
+            <StatCard 
               title="Reports" 
               value={reports.length} 
               icon="file-earmark-text" 
               color="#e74a3b"
               subtitle="Generated reports"
+            />
+          </div>
+          <div className="col-xl-3 col-md-6">
+            <StatCard 
+              title="Available Games" 
+              value={games.length} 
+              icon="controller" 
+              color="#e74a3b"
+              subtitle="for rehabilitation"
             />
           </div>
         </div>
@@ -1336,7 +1369,7 @@ const TherapistDashboard = () => {
                           <th>Condition</th>
                           <th>Access Code</th>
                           <th>Status</th>
-                          <th className="text-end pe-4">Actions</th>
+                          <th className="text-center pe-4">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -1372,21 +1405,21 @@ const TherapistDashboard = () => {
                                 Active
                               </span>
                             </td>
-                            <td className="text-end pe-4">
-                              <div className="btn-group btn-group-sm" role="group">
+                            <td className="text-end pe-4" style={{width: '25%'}}>
+                              <div className="btn-group btn-group-sm" role="group" style={{width: '100%'}}>
                                 <button 
                                   className="btn btn-outline-primary"
                                   onClick={() => handleConfigureGames(patient)}
                                   title="Configure Games"
                                 >
-                                  <i className="bi bi-gear"></i>
+                                  <i className="bi bi-gear"> Games</i>
                                 </button>
                                 <button 
                                   className="btn btn-outline-info"
                                   onClick={() => handleViewSessions(patient)}
                                   title="View Sessions"
                                 >
-                                  <i className="bi bi-calendar-week"></i>
+                                  <i className="bi bi-calendar-week"> Sessions</i>
                                 </button>
                                 <button 
                                   className="btn btn-outline-success"
@@ -1396,14 +1429,14 @@ const TherapistDashboard = () => {
                                   }}
                                   title="Assign Instructor"
                                 >
-                                  <i className="bi bi-person-plus"></i>
+                                  <i className="bi bi-person-plus"> Assign</i>
                                 </button>
                                 <button 
                                   className="btn btn-outline-warning"
                                   onClick={() => handleCreateReport(patient)}
                                   title="Create Report"
                                 >
-                                  <i className="bi bi-file-text"></i>
+                                  <i className="bi bi-file-text"> Report</i>
                                 </button>
                               </div>
                             </td>
@@ -2340,7 +2373,7 @@ const TherapistDashboard = () => {
           border: none;
           border-bottom: 3px solid transparent;
           padding: 0.75rem 1rem;
-          color: #6c757d;
+          color: #6c757d !important;
           font-weight: 500;
         }
         
