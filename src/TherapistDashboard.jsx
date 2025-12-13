@@ -415,13 +415,24 @@ const TherapistDashboard = () => {
   const handleViewReport = async (report) => {
     try {
       setLoading(true);
-      // Fetch full report details including sessions
+      // Fetch full report details
       const response = await fetch(`http://localhost:5000/api/therapist/report/${report._id}?therapistId=${currentUser.id}`);
       const data = await response.json();
       
       if (response.ok) {
-        setSelectedPatient(patients.find(p => p._id === data.report.patientId));
-        setCurrentReport(data.report);
+        // Ensure report has the new structure
+        const fullReport = {
+          ...data.report,
+          reportData: {
+            ...data.report.reportData,
+            instructors: data.report.reportData?.instructors || [],
+            graphData: data.report.reportData?.graphData || null,
+            instructorPerformance: data.report.reportData?.instructorPerformance || []
+          }
+        };
+        
+        setSelectedPatient(patients.find(p => p._id === fullReport.patientId));
+        setCurrentReport(fullReport);
         setShowReportPreview(true);
       }
     } catch (error) {
@@ -503,6 +514,104 @@ const TherapistDashboard = () => {
       const formData = new FormData(e.target);
       const selectedSessions = formData.getAll('sessionIds');
       
+      // Get the selected sessions with full details including instructor data
+      const sessionDetails = await Promise.all(
+        selectedSessions.map(async (sessionId) => {
+          const response = await fetch(`http://localhost:5000/api/session/id/${sessionId}`);
+          const data = await response.json();
+          return data.session;
+        })
+      );
+      
+      // Extract unique instructors from selected sessions
+      const instructorIds = [...new Set(sessionDetails
+        .filter(s => s.instructorId)
+        .map(s => s.instructorId))];
+      
+      // Fetch instructor details for each unique instructor
+      const instructorDetails = await Promise.all(
+        instructorIds.map(async (instructorId) => {
+          try {
+            const response = await fetch(`http://localhost:5000/api/users/${instructorId}`);
+            const data = await response.json();
+            return data.user;
+          } catch (error) {
+            console.error(`Error fetching instructor ${instructorId}:`, error);
+            return null;
+          }
+        })
+      );
+      
+      // Filter out null results and format instructor data
+      const validInstructors = instructorDetails
+        .filter(instructor => instructor !== null)
+        .map(instructor => ({
+          _id: instructor._id,
+          name: instructor.name || 'Unknown Instructor',
+          email: instructor.email || 'No email',
+          role: 'Instructor'
+        }));
+
+      console.log('Valid Instructors:', validInstructors);
+      
+      // Prepare graph data for the report
+      const graphData = {
+        // Score progression over time
+        scoreTrend: sessionDetails.map((session, index) => ({
+          date: session?.date || new Date().toISOString(),
+          score: session?.gameData?.score || 0,
+          sessionNumber: index + 1,
+          instructorName: validInstructors.find(i => i._id === session.instructorId)?.name || 'Unknown'
+        })),
+        
+        // Body movement metrics comparison
+        movementMetrics: sessionDetails.map(session => ({
+          date: session?.date || new Date().toISOString(),
+          leftHand: session?.gameData?.leftHandMaxFromHip || 0,
+          rightHand: session?.gameData?.rightHandMaxFromHip || 0,
+          leftLeg: session?.gameData?.leftLegMax || 0,
+          rightLeg: session?.gameData?.rightLegMax || 0,
+          instructorId: session.instructorId
+        })),
+        
+        // Game configuration parameters
+        gameConfig: sessionDetails.map(session => ({
+          date: session?.date || new Date().toISOString(),
+          bubbleSpeed: session?.analytics?.bubbleSpeedAction || 0,
+          bubbleLifetime: session?.analytics?.bubbleLifetime || 0,
+          bubbleSize: session?.analytics?.bubbleSize || 0,
+          numBubbles: session?.analytics?.numBubbles || 0,
+          spawnAreaSize: session?.analytics?.spawnAreaSize || 0,
+          spawnHeight: session?.analytics?.spawnHeight || 0,
+          instructorId: session.instructorId
+        })),
+        
+        // Instructor performance data
+        instructorPerformance: validInstructors.map(instructor => {
+          const instructorSessions = sessionDetails.filter(s => s.instructorId === instructor._id);
+          const avgScore = instructorSessions.length > 0 
+            ? instructorSessions.reduce((sum, s) => sum + (s.gameData?.score || 0), 0) / instructorSessions.length
+            : 0;
+          const avgRating = instructorSessions.length > 0 
+            ? instructorSessions.reduce((sum, s) => sum + (s.rating || 0), 0) / instructorSessions.length
+            : 0;
+          
+          return {
+            instructorId: instructor._id,
+            instructorName: instructor.name,
+            sessionsCount: instructorSessions.length,
+            avgScore: avgScore.toFixed(1),
+            avgRating: avgRating.toFixed(1),
+            avgLeftHand: instructorSessions.length > 0 
+              ? (instructorSessions.reduce((sum, s) => sum + (s.gameData?.leftHandMaxFromHip || 0), 0) / instructorSessions.length).toFixed(2)
+              : '0.00',
+            avgRightHand: instructorSessions.length > 0 
+              ? (instructorSessions.reduce((sum, s) => sum + (s.gameData?.rightHandMaxFromHip || 0), 0) / instructorSessions.length).toFixed(2)
+              : '0.00'
+          };
+        })
+      };
+      
       const response = await fetch('http://localhost:5000/api/therapist/create-report', {
         method: 'POST',
         headers: {
@@ -517,7 +626,10 @@ const TherapistDashboard = () => {
             summary: formData.get('summary'),
             progress: formData.get('progress'),
             recommendations: formData.get('recommendations'),
-            aiGenerated: aiGeneratedContent
+            aiGenerated: aiGeneratedContent,
+            instructors: validInstructors, // Add instructors list
+            graphData: graphData, // Add graph data
+            instructorPerformance: graphData.instructorPerformance // Add instructor performance data
           },
           sessionIds: selectedSessions
         }),
@@ -594,9 +706,80 @@ const TherapistDashboard = () => {
         margin: { left: 20, right: 20 }
       });
       
-      // Add report content
+      // Add assigned instructors section
       let finalY = doc.lastAutoTable.finalY + 15;
       
+      if (currentReport.reportData.instructors && currentReport.reportData.instructors.length > 0) {
+        doc.setFontSize(14);
+        doc.text('INVOLVED INSTRUCTORS', 20, finalY);
+        doc.setFontSize(11);
+        finalY += 10;
+        
+        const instructorData = currentReport.reportData.instructors.map(instructor => [
+          instructor.name || 'N/A',
+          instructor.email || 'N/A',
+          'Instructor'
+        ]);
+        
+        autoTable(doc, {
+          startY: finalY,
+          head: [['Name', 'Email', 'Role']],
+          body: instructorData,
+          theme: 'grid',
+          headStyles: { fillColor: [102, 187, 106] },
+          margin: { left: 20, right: 20 }
+        });
+        
+        finalY = doc.lastAutoTable.finalY + 15;
+      }
+      
+      // Add instructor performance analysis
+      if (currentReport.reportData.instructorPerformance && 
+          currentReport.reportData.instructorPerformance.length > 0) {
+        
+        doc.setFontSize(14);
+        doc.text('INSTRUCTOR PERFORMANCE ANALYSIS', 20, finalY);
+        doc.setFontSize(11);
+        finalY += 10;
+        
+        const performanceData = currentReport.reportData.instructorPerformance.map(instructor => [
+          instructor.instructorName,
+          instructor.sessionsCount.toString(),
+          instructor.avgScore,
+          instructor.avgRating,
+          instructor.avgLeftHand,
+          instructor.avgRightHand
+        ]);
+        
+        autoTable(doc, {
+          startY: finalY,
+          head: [['Instructor', 'Sessions', 'Avg Score', 'Avg Rating', 'Avg Left Hand (m)', 'Avg Right Hand (m)']],
+          body: performanceData,
+          theme: 'grid',
+          headStyles: { fillColor: [255, 152, 0] },
+          margin: { left: 20, right: 20 }
+        });
+        
+        finalY = doc.lastAutoTable.finalY + 15;
+        
+        // Add analysis notes
+        doc.setFontSize(10);
+        doc.setTextColor(100, 100, 100);
+        const notes = [
+          'Performance Metrics Interpretation:',
+          '- Score: Higher scores indicate better game performance',
+          '- Rating: Patient satisfaction with the session (1-5 scale)',
+          '- Hand Movement: Range of motion achieved during sessions (meters)'
+        ];
+        
+        notes.forEach((note, index) => {
+          doc.text(note, 20, finalY + (index * 5));
+        });
+        
+        finalY += (notes.length * 5) + 10;
+      }
+      
+      // Add report content
       doc.setFontSize(14);
       doc.text('REPORT SUMMARY', 20, finalY);
       doc.setFontSize(11);
@@ -604,7 +787,7 @@ const TherapistDashboard = () => {
       
       const summaryLines = doc.splitTextToSize(currentReport.reportData.summary, pageWidth - 40);
       doc.text(summaryLines, 20, finalY);
-      finalY += (summaryLines.length * 7) + 10;
+      finalY += (summaryLines.length * 4) + 10;
       
       doc.setFontSize(14);
       doc.text('PROGRESS ASSESSMENT', 20, finalY);
@@ -631,27 +814,136 @@ const TherapistDashboard = () => {
       doc.text(recommendationLines, 20, finalY);
       finalY += (recommendationLines.length * 7) + 10;
       
-      // Add included sessions
-      if (currentReport.sessions && currentReport.sessions.length > 0) {
+      // Add movement metrics summary
+      if (currentReport.reportData.graphData?.movementMetrics && 
+          currentReport.reportData.graphData.movementMetrics.length > 0) {
+        
+        if (finalY > doc.internal.pageSize.height - 100) {
+          doc.addPage();
+          finalY = 20;
+        }
+        
         doc.setFontSize(14);
-        doc.text('INCLUDED SESSIONS', 20, finalY);
+        doc.text('MOVEMENT METRICS ANALYSIS', 20, finalY);
+        doc.setFontSize(11);
         finalY += 10;
         
-        const sessionData = currentReport.sessions.map(session => [
-          new Date(session.date).toLocaleDateString(),
-          session.gameData?.gameName || 'Unknown',
-          session.gameData?.score || '0',
-          session.rating || '0',
-          session.review?.substring(0, 30) + '...' || 'No review'
-        ]);
+        // Calculate average movement metrics
+        const metrics = currentReport.reportData.graphData.movementMetrics;
+        const avgLeftHand = (metrics.reduce((sum, m) => sum + (m.leftHand || 0), 0) / metrics.length).toFixed(2);
+        const avgRightHand = (metrics.reduce((sum, m) => sum + (m.rightHand || 0), 0) / metrics.length).toFixed(2);
+        const avgLeftLeg = (metrics.reduce((sum, m) => sum + (m.leftLeg || 0), 0) / metrics.length).toFixed(2);
+        const avgRightLeg = (metrics.reduce((sum, m) => sum + (m.rightLeg || 0), 0) / metrics.length).toFixed(2);
+        
+        const movementTable = [
+          ['Body Part', 'Average Range (meters)', 'Interpretation', 'Target Range'],
+          ['Left Hand', avgLeftHand, 
+            avgLeftHand > 0.7 ? 'Good' : avgLeftHand > 0.5 ? 'Moderate' : 'Needs Improvement',
+            '0.7-1.0m'],
+          ['Right Hand', avgRightHand, 
+            avgRightHand > 0.7 ? 'Good' : avgRightHand > 0.5 ? 'Moderate' : 'Needs Improvement',
+            '0.7-1.0m'],
+          ['Left Leg', avgLeftLeg, 
+            avgLeftLeg > 0.8 ? 'Good' : avgLeftLeg > 0.6 ? 'Moderate' : 'Needs Improvement',
+            '0.8-1.2m'],
+          ['Right Leg', avgRightLeg, 
+            avgRightLeg > 0.8 ? 'Good' : avgRightLeg > 0.6 ? 'Moderate' : 'Needs Improvement',
+            '0.8-1.2m']
+        ];
         
         autoTable(doc, {
           startY: finalY,
-          head: [['Date', 'Game', 'Score', 'Rating', 'Review']],
-          body: sessionData,
+          head: movementTable.slice(0, 1),
+          body: movementTable.slice(1),
           theme: 'grid',
           headStyles: { fillColor: [66, 133, 244] },
           margin: { left: 20, right: 20 }
+        });
+        
+        finalY = doc.lastAutoTable.finalY + 15;
+      }
+      
+      // Add game configuration analysis
+      if (currentReport.reportData.graphData?.gameConfig && 
+          currentReport.reportData.graphData.gameConfig.length > 0) {
+        
+        if (finalY > doc.internal.pageSize.height - 100) {
+          doc.addPage();
+          finalY = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('GAME CONFIGURATION ANALYSIS', 20, finalY);
+        doc.setFontSize(11);
+        finalY += 10;
+        
+        const configs = currentReport.reportData.graphData.gameConfig;
+        const latestConfig = configs[configs.length - 1];
+        
+        const configTable = [
+          ['Parameter', 'Value', 'Difficulty Level', 'Therapeutic Impact'],
+          ['Bubble Speed', latestConfig.bubbleSpeed, 
+            latestConfig.bubbleSpeed > 7 ? 'High' : latestConfig.bubbleSpeed > 4 ? 'Medium' : 'Low',
+            latestConfig.bubbleSpeed > 7 ? 'Improves reaction time' : 'Builds coordination'],
+          ['Bubble Lifetime', latestConfig.bubbleLifetime + 's', 
+            latestConfig.bubbleLifetime > 5 ? 'Easy' : latestConfig.bubbleLifetime > 2 ? 'Medium' : 'Hard',
+            'Shorter time improves focus'],
+          ['Number of Bubbles', latestConfig.numBubbles, 
+            latestConfig.numBubbles > 15 ? 'High' : latestConfig.numBubbles > 8 ? 'Medium' : 'Low',
+            'More bubbles increase endurance'],
+          ['Bubble Size', latestConfig.bubbleSize, 
+            latestConfig.bubbleSize > 2 ? 'Large' : latestConfig.bubbleSize > 0.5 ? 'Medium' : 'Small',
+            'Smaller targets improve precision'],
+          ['Spawn Area', latestConfig.spawnAreaSize, 
+            latestConfig.spawnAreaSize > 7 ? 'Large' : latestConfig.spawnAreaSize > 4 ? 'Medium' : 'Small',
+            'Larger area improves range of motion']
+        ];
+        
+        autoTable(doc, {
+          startY: finalY,
+          head: configTable.slice(0, 1),
+          body: configTable.slice(1),
+          theme: 'grid',
+          headStyles: { fillColor: [156, 39, 176] },
+          margin: { left: 20, right: 20 }
+        });
+        
+        finalY = doc.lastAutoTable.finalY + 15;
+      }
+      
+      // Add included sessions with detailed metrics
+      if (currentReport.sessions && currentReport.sessions.length > 0) {
+        if (finalY > doc.internal.pageSize.height - 100) {
+          doc.addPage();
+          finalY = 20;
+        }
+        
+        doc.setFontSize(14);
+        doc.text('DETAILED SESSION METRICS', 20, finalY);
+        finalY += 10;
+        
+        const sessionData = currentReport.sessions.map(session => {
+          const instructor = currentReport.reportData.instructors?.find(i => i._id === session.instructorId);
+          return [
+            new Date(session.date).toLocaleDateString(),
+            session.gameData?.gameName || 'Unknown',
+            session.gameData?.score || '0',
+            instructor?.name || 'N/A',
+            `LH: ${(session.gameData?.leftHandMaxFromHip || 0).toFixed(2)}m`,
+            `RH: ${(session.gameData?.rightHandMaxFromHip || 0).toFixed(2)}m`,
+            session.rating || '0',
+            session.review?.substring(0, 20) + '...' || 'No review'
+          ];
+        });
+        
+        autoTable(doc, {
+          startY: finalY,
+          head: [['Date', 'Game', 'Score', 'Instructor', 'Left Hand', 'Right Hand', 'Rating', 'Review']],
+          body: sessionData,
+          theme: 'grid',
+          headStyles: { fillColor: [66, 133, 244] },
+          margin: { left: 20, right: 20 },
+          styles: { fontSize: 7 }
         });
       }
       
@@ -948,6 +1240,204 @@ const TherapistDashboard = () => {
     }
   };
 
+  const InstructorPerformanceChart = ({ data }) => {
+    const chartData = {
+      labels: data.map(item => item.instructorName),
+      datasets: [
+        {
+          label: 'Average Score',
+          data: data.map(item => parseFloat(item.avgScore)),
+          backgroundColor: 'rgba(54, 162, 235, 0.5)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1,
+          yAxisID: 'y',
+        },
+        {
+          label: 'Average Rating',
+          data: data.map(item => parseFloat(item.avgRating)),
+          backgroundColor: 'rgba(255, 206, 86, 0.5)',
+          borderColor: 'rgba(255, 206, 86, 1)',
+          borderWidth: 1,
+          yAxisID: 'y1',
+        },
+        {
+          label: 'Sessions Count',
+          data: data.map(item => item.sessionsCount),
+          backgroundColor: 'rgba(75, 192, 192, 0.5)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1,
+          yAxisID: 'y2',
+          type: 'line',
+          fill: false,
+        }
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: 'Instructor Performance Comparison',
+        },
+      },
+      scales: {
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: {
+            display: true,
+            text: 'Score'
+          }
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: {
+            display: true,
+            text: 'Rating'
+          },
+          grid: {
+            drawOnChartArea: false,
+          },
+          min: 0,
+          max: 5,
+        },
+        y2: {
+          type: 'linear',
+          display: false,
+          position: 'right',
+        }
+      },
+    };
+
+    return <Bar data={chartData} options={options} />;
+  };
+
+  const MovementRangeChart = ({ data }) => {
+    const chartData = {
+      labels: data.map(item => `Session ${data.indexOf(item) + 1}`),
+      datasets: [
+        {
+          label: 'Left Hand Range (m)',
+          data: data.map(item => item.leftHand),
+          backgroundColor: 'rgba(255, 99, 132, 0.2)',
+          borderColor: 'rgba(255, 99, 132, 1)',
+          borderWidth: 1,
+        },
+        {
+          label: 'Right Hand Range (m)',
+          data: data.map(item => item.rightHand),
+          backgroundColor: 'rgba(54, 162, 235, 0.2)',
+          borderColor: 'rgba(54, 162, 235, 1)',
+          borderWidth: 1,
+        },
+        {
+          label: 'Left Leg Range (m)',
+          data: data.map(item => item.leftLeg),
+          backgroundColor: 'rgba(75, 192, 192, 0.2)',
+          borderColor: 'rgba(75, 192, 192, 1)',
+          borderWidth: 1,
+        },
+        {
+          label: 'Right Leg Range (m)',
+          data: data.map(item => item.rightLeg),
+          backgroundColor: 'rgba(255, 159, 64, 0.2)',
+          borderColor: 'rgba(255, 159, 64, 1)',
+          borderWidth: 1,
+        },
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: 'Movement Range Across Sessions',
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Movement Range (meters)'
+          }
+        },
+      },
+    };
+
+    return <Bar data={chartData} options={options} />;
+  };
+
+  const GameConfigTrendChart = ({ data }) => {
+    const chartData = {
+      labels: data.map(item => new Date(item.date).toLocaleDateString()),
+      datasets: [
+        {
+          label: 'Bubble Speed',
+          data: data.map(item => item.bubbleSpeed),
+          borderColor: 'rgba(255, 99, 132, 1)',
+          backgroundColor: 'rgba(255, 99, 132, 0.1)',
+          fill: true,
+          tension: 0.4,
+        },
+        {
+          label: 'Bubble Lifetime',
+          data: data.map(item => item.bubbleLifetime),
+          borderColor: 'rgba(54, 162, 235, 1)',
+          backgroundColor: 'rgba(54, 162, 235, 0.1)',
+          fill: true,
+          tension: 0.4,
+        },
+        {
+          label: 'Number of Bubbles',
+          data: data.map(item => item.numBubbles),
+          borderColor: 'rgba(75, 192, 192, 1)',
+          backgroundColor: 'rgba(75, 192, 192, 0.1)',
+          fill: true,
+          tension: 0.4,
+        }
+      ],
+    };
+
+    const options = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          position: 'top',
+        },
+        title: {
+          display: true,
+          text: 'Game Configuration Progression',
+        },
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          title: {
+            display: true,
+            text: 'Value'
+          }
+        },
+      },
+    };
+
+    return <Line data={chartData} options={options} />;
+  };
+
   if (loading && !showGameConfig && !showAssignInstructor && !showCreateReport && !showPatientSessions && !showReportPreview) {
     return (
       <div className="container-fluid py-5">
@@ -1059,6 +1549,234 @@ const TherapistDashboard = () => {
             </div>
           </div>
         )}
+
+        <div>
+          <div className="d-flex justify-content-between align-items-center mb-4">
+            <div>
+              <h5 className="mb-0">
+                <i className="bi bi-graph-up me-2"></i>
+                Performance Analytics
+              </h5>
+              <p className="text-muted mb-0">Detailed analysis of therapy sessions and performance metrics</p>
+            </div>
+            <div className="btn-group">
+              <button className="btn btn-outline-secondary">
+                <i className="bi bi-calendar me-2"></i>
+                Last 30 Days
+              </button>
+              <button className="btn btn-outline-secondary">
+                <i className="bi bi-download me-2"></i>
+                Export Data
+              </button>
+            </div>
+          </div>
+
+          {/* Select Patient Dropdown */}
+          <div className="row mb-4">
+            <div className="col-md-6">
+              <div className="card">
+                <div className="card-body">
+                  <h6 className="card-title mb-3">Select Patient for Analysis</h6>
+                  <select 
+                    className="form-select"
+                    value={selectedPatient?._id || ''}
+                    onChange={(e) => {
+                      const patient = patients.find(p => p._id === e.target.value);
+                      if (patient) {
+                        setSelectedPatient(patient);
+                        fetchPatientSessions(patient._id);
+                      }
+                    }}
+                  >
+                    <option value="">All Patients</option>
+                    {patients.map(patient => (
+                      <option key={patient._id} value={patient._id}>
+                        {patient.name} ({patient.condition})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Instructor Performance Section */}
+          <div className="row mb-4">
+            <div className="col-12">
+              <div className="card shadow-sm">
+                <div className="card-header bg-white">
+                  <h5 className="mb-0">
+                    <i className="bi bi-people me-2"></i>
+                    Instructor Performance Analysis
+                  </h5>
+                </div>
+                <div className="card-body">
+                  {instructors.length === 0 ? (
+                    <div className="text-center py-4">
+                      <i className="bi bi-people display-4 text-muted"></i>
+                      <p className="mt-3 text-muted">No instructors found</p>
+                    </div>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-hover">
+                        <thead>
+                          <tr>
+                            <th>Instructor</th>
+                            <th>Patients</th>
+                            <th>Avg Score</th>
+                            <th>Avg Rating</th>
+                            <th>Sessions</th>
+                            <th>Performance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {instructors.map(instructor => {
+                            const instructorSessions = sessions.filter(s => s.instructorId === instructor._id);
+                            const avgScore = instructorSessions.length > 0 
+                              ? (instructorSessions.reduce((sum, s) => sum + (s.gameData?.score || 0), 0) / instructorSessions.length).toFixed(1)
+                              : '0.0';
+                            const avgRating = instructorSessions.length > 0 
+                              ? (instructorSessions.reduce((sum, s) => sum + (s.rating || 0), 0) / instructorSessions.length).toFixed(1)
+                              : '0.0';
+                            
+                            return (
+                              <tr key={instructor._id}>
+                                <td>
+                                  <div className="d-flex align-items-center">
+                                    <div className="avatar avatar-sm bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center me-2">
+                                      <i className="bi bi-person"></i>
+                                    </div>
+                                    <div>
+                                      <div>{instructor.name}</div>
+                                      <small className="text-muted">{instructor.email}</small>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className="badge bg-info">
+                                    {[...new Set(instructorSessions.map(s => s.patientId))].length}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span className="fw-bold">{avgScore}</span>
+                                </td>
+                                <td>
+                                  <div className="d-flex align-items-center">
+                                    <div className="stars me-2">
+                                      {[...Array(5)].map((_, i) => (
+                                        <i 
+                                          key={i}
+                                          className={`bi bi-star${i < Math.floor(parseFloat(avgRating)) ? '-fill' : ''} text-warning`}
+                                        ></i>
+                                      ))}
+                                    </div>
+                                    <span>{avgRating}</span>
+                                  </div>
+                                </td>
+                                <td>
+                                  <span className="badge bg-secondary">{instructorSessions.length}</span>
+                                </td>
+                                <td>
+                                  <div className="progress" style={{ height: '8px' }}>
+                                    <div 
+                                      className="progress-bar bg-success" 
+                                      style={{ width: `${(parseFloat(avgScore) / 100) * 100}%` }}
+                                    ></div>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Movement Analytics */}
+          <div className="row mb-4">
+            <div className="col-lg-6">
+              <div className="card shadow-sm h-100">
+                <div className="card-header bg-white">
+                  <h5 className="mb-0">
+                    <i className="bi bi-activity me-2"></i>
+                    Movement Range Analysis
+                  </h5>
+                </div>
+                <div className="card-body">
+                  {sessions.length === 0 ? (
+                    <div className="text-center py-5">
+                      <i className="bi bi-activity display-1 text-muted"></i>
+                      <p className="mt-3 text-muted">No movement data available</p>
+                    </div>
+                  ) : (
+                    <div style={{ height: '300px' }}>
+                      <MovementRangeChart 
+                        data={sessions.slice(0, 10).map(session => ({
+                          leftHand: session.gameData?.leftHandMaxFromHip || 0,
+                          rightHand: session.gameData?.rightHandMaxFromHip || 0,
+                          leftLeg: session.gameData?.leftLegMax || 0,
+                          rightLeg: session.gameData?.rightLegMax || 0
+                        }))}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="col-lg-6">
+              <div className="card shadow-sm h-100">
+                <div className="card-header bg-white">
+                  <h5 className="mb-0">
+                    <i className="bi bi-trending-up me-2"></i>
+                    Score Progression
+                  </h5>
+                </div>
+                <div className="card-body">
+                  {sessions.length === 0 ? (
+                    <div className="text-center py-5">
+                      <i className="bi bi-graph-up display-1 text-muted"></i>
+                      <p className="mt-3 text-muted">No score data available</p>
+                    </div>
+                  ) : (
+                    <div style={{ height: '300px' }}>
+                      <Line 
+                        data={{
+                          labels: sessions.slice(0, 10).map(s => 
+                            new Date(s.date).toLocaleDateString()
+                          ),
+                          datasets: [
+                            {
+                              label: 'Score',
+                              data: sessions.slice(0, 10).map(s => s.gameData?.score || 0),
+                              borderColor: '#4e73df',
+                              backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                              fill: true,
+                              tension: 0.4,
+                            }
+                          ]
+                        }}
+                        options={{
+                          responsive: true,
+                          maintainAspectRatio: false,
+                          plugins: {
+                            legend: {
+                              position: 'top',
+                            }
+                          }
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {/* Main Tabs */}
         <div className="card shadow-sm">
@@ -2147,6 +2865,156 @@ const TherapistDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Instructors Section */}
+                  {currentReport.reportData.instructors && currentReport.reportData.instructors.length > 0 && (
+                    <div className="mb-5">
+                      <h5 className="text-primary mb-3">
+                        <i className="bi bi-people me-2"></i>
+                        Involved Instructors
+                      </h5>
+                      <div className="row">
+                        {currentReport.reportData.instructors.map(instructor => (
+                          <div key={instructor._id} className="col-md-6 mb-3">
+                            <div className="card border-success">
+                              <div className="card-body">
+                                <h6 className="card-title">
+                                  <i className="bi bi-person-badge me-2"></i>
+                                  {instructor.name}
+                                </h6>
+                                <p className="card-text mb-1">
+                                  <i className="bi bi-envelope me-2"></i>
+                                  {instructor.email}
+                                </p>
+                                <p className="card-text mb-1">
+                                  <i className="bi bi-award me-2"></i>
+                                  {instructor.role}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Performance Charts Section */}
+                  <div className="row mb-5">
+                    {/* Instructor Performance Chart */}
+                    {currentReport.reportData.instructorPerformance && 
+                    currentReport.reportData.instructorPerformance.length > 0 && (
+                      <div className="col-lg-6 mb-4">
+                        <div className="card shadow-sm">
+                          <div className="card-body">
+                            <h6 className="card-title mb-3">
+                              <i className="bi bi-graph-up me-2"></i>
+                              Instructor Performance
+                            </h6>
+                            <div style={{ height: '300px' }}>
+                              <InstructorPerformanceChart 
+                                data={currentReport.reportData.instructorPerformance} 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Movement Range Chart */}
+                    {currentReport.reportData.graphData?.movementMetrics && 
+                    currentReport.reportData.graphData.movementMetrics.length > 0 && (
+                      <div className="col-lg-6 mb-4">
+                        <div className="card shadow-sm">
+                          <div className="card-body">
+                            <h6 className="card-title mb-3">
+                              <i className="bi bi-activity me-2"></i>
+                              Movement Range Analysis
+                            </h6>
+                            <div style={{ height: '300px' }}>
+                              <MovementRangeChart 
+                                data={currentReport.reportData.graphData.movementMetrics} 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Game Config Trend Chart */}
+                    {currentReport.reportData.graphData?.gameConfig && 
+                    currentReport.reportData.graphData.gameConfig.length > 0 && (
+                      <div className="col-12 mb-4">
+                        <div className="card shadow-sm">
+                          <div className="card-body">
+                            <h6 className="card-title mb-3">
+                              <i className="bi bi-sliders me-2"></i>
+                              Game Configuration Progression
+                            </h6>
+                            <div style={{ height: '250px' }}>
+                              <GameConfigTrendChart 
+                                data={currentReport.reportData.graphData.gameConfig} 
+                              />
+                            </div>
+                            <div className="small text-muted mt-2">
+                              Shows how game difficulty parameters were adjusted over time
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Score Trend Chart */}
+                    {currentReport.reportData.graphData?.scoreTrend && 
+                    currentReport.reportData.graphData.scoreTrend.length > 0 && (
+                      <div className="col-12 mb-4">
+                        <div className="card shadow-sm">
+                          <div className="card-body">
+                            <h6 className="card-title mb-3">
+                              <i className="bi bi-trending-up me-2"></i>
+                              Score Progression
+                            </h6>
+                            <div style={{ height: '250px' }}>
+                              <Line 
+                                data={{
+                                  labels: currentReport.reportData.graphData.scoreTrend.map(item => 
+                                    new Date(item.date).toLocaleDateString()
+                                  ),
+                                  datasets: [
+                                    {
+                                      label: 'Session Score',
+                                      data: currentReport.reportData.graphData.scoreTrend.map(item => item.score),
+                                      borderColor: '#4e73df',
+                                      backgroundColor: 'rgba(78, 115, 223, 0.1)',
+                                      fill: true,
+                                      tension: 0.4,
+                                    }
+                                  ]
+                                }}
+                                options={{
+                                  responsive: true,
+                                  maintainAspectRatio: false,
+                                  plugins: {
+                                    legend: {
+                                      position: 'top',
+                                    }
+                                  },
+                                  scales: {
+                                    y: {
+                                      beginAtZero: true,
+                                      title: {
+                                        display: true,
+                                        text: 'Score'
+                                      }
+                                    }
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Report Content */}
                   <div className="mb-5">
                     <h5 className="text-primary mb-3">
@@ -2192,34 +3060,83 @@ const TherapistDashboard = () => {
                               <th>Date</th>
                               <th>Game</th>
                               <th>Score</th>
+                              <th>Instructor</th>
+                              <th>Left Hand (m)</th>
+                              <th>Right Hand (m)</th>
                               <th>Rating</th>
-                              <th>Duration</th>
                               <th>Review</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {currentReport.sessions.map(session => (
-                              <tr key={session._id}>
-                                <td>{new Date(session.date).toLocaleDateString()}</td>
-                                <td>{session.gameData?.gameName || 'Unknown'}</td>
-                                <td>{session.gameData?.score || '0'}</td>
-                                <td>
-                                  <div className="stars">
-                                    {[...Array(5)].map((_, i) => (
-                                      <i 
-                                        key={i}
-                                        className={`bi bi-star${i < Math.floor(session.rating || 0) ? '-fill' : ''} text-warning`}
-                                      ></i>
-                                    ))}
-                                    <span className="ms-2">({session.rating || '0'}/5)</span>
-                                  </div>
-                                </td>
-                                <td>{session.duration || '180s'}</td>
-                                <td>{session.review || 'No review'}</td>
-                              </tr>
-                            ))}
+                            {currentReport.sessions.map(session => {
+                              const instructor = currentReport.reportData.instructors?.find(i => i._id === session.instructorId);
+                              return (
+                                <tr key={session._id}>
+                                  <td>{new Date(session.date).toLocaleDateString()}</td>
+                                  <td>{session.gameData?.gameName || 'Unknown'}</td>
+                                  <td><strong>{session.gameData?.score || '0'}</strong></td>
+                                  <td>{instructor?.name || 'N/A'}</td>
+                                  <td>{(session.gameData?.leftHandMaxFromHip || 0).toFixed(2)}</td>
+                                  <td>{(session.gameData?.rightHandMaxFromHip || 0).toFixed(2)}</td>
+                                  <td>
+                                    <div className="stars">
+                                      {[...Array(5)].map((_, i) => (
+                                        <i 
+                                          key={i}
+                                          className={`bi bi-star${i < Math.floor(session.rating || 0) ? '-fill' : ''} text-warning`}
+                                        ></i>
+                                      ))}
+                                      <span className="ms-2">({session.rating || '0'}/5)</span>
+                                    </div>
+                                  </td>
+                                  <td>{session.review || 'No review'}</td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Performance Metrics Summary */}
+                  {currentReport.reportData.instructorPerformance && 
+                  currentReport.reportData.instructorPerformance.length > 0 && (
+                    <div className="mb-5">
+                      <h5 className="text-primary mb-3">
+                        <i className="bi bi-bar-chart me-2"></i>
+                        Performance Metrics Summary
+                      </h5>
+                      <div className="row">
+                        {currentReport.reportData.instructorPerformance.map(instructor => (
+                          <div key={instructor.instructorId} className="col-md-4 mb-3">
+                            <div className="card border-info">
+                              <div className="card-body">
+                                <h6 className="card-title">{instructor.instructorName}</h6>
+                                <div className="row">
+                                  <div className="col-6">
+                                    <small className="text-muted">Avg Score</small>
+                                    <div className="h5 mb-0">{instructor.avgScore}</div>
+                                  </div>
+                                  <div className="col-6">
+                                    <small className="text-muted">Avg Rating</small>
+                                    <div className="h5 mb-0">{instructor.avgRating}/5</div>
+                                  </div>
+                                </div>
+                                <div className="row mt-2">
+                                  <div className="col-6">
+                                    <small className="text-muted">Sessions</small>
+                                    <div className="h6 mb-0">{instructor.sessionsCount}</div>
+                                  </div>
+                                  <div className="col-6">
+                                    <small className="text-muted">Hand Range</small>
+                                    <div className="h6 mb-0">L:{instructor.avgLeftHand}m</div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
                   )}
@@ -2227,7 +3144,7 @@ const TherapistDashboard = () => {
                   {/* Footer */}
                   <div className="border-top pt-4 mt-4 text-center text-muted">
                     <p className="mb-1">This report was generated by the Therapy Management System</p>
-                    <small>Report ID: {currentReport._id} | Version 1.0</small>
+                    <small>Report ID: {currentReport._id} | Version 1.0 | Includes performance analytics</small>
                   </div>
                 </div>
               </div>
