@@ -9,7 +9,6 @@ const Navbar = () => {
   const location = useLocation();
   const [isScrolled, setIsScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -24,7 +23,6 @@ const Navbar = () => {
     logout();
     navigate('/');
     setMobileMenuOpen(false);
-    setDropdownOpen(false);
   };
 
   const isActive = (path) => {
@@ -71,13 +69,36 @@ const Navbar = () => {
     );
   };
 
-  const handleDropdownToggle = () => {
-    setDropdownOpen(!dropdownOpen);
+  const getDashboardPath = () => {
+    if (!currentUser) return '/';
+    switch (currentUser.userType) {
+      case 'therapist':
+        return '/therapist';
+      case 'instructor':
+        return '/instructor';
+      case 'admin':
+        return '/admin';
+      default:
+        return '/dashboard';
+    }
+  };
+
+  const getDashboardIcon = () => {
+    if (!currentUser) return 'bi-speedometer2';
+    switch (currentUser.userType) {
+      case 'therapist':
+        return 'bi-clipboard-pulse';
+      case 'instructor':
+        return 'bi-person-video';
+      case 'admin':
+        return 'bi-shield-check';
+      default:
+        return 'bi-speedometer2';
+    }
   };
 
   const handleNavLinkClick = () => {
     setMobileMenuOpen(false);
-    setDropdownOpen(false);
   };
 
   // Desktop Navigation
@@ -87,7 +108,7 @@ const Navbar = () => {
         <Link 
           className={`nav-link ${isActive('/')}`} 
           to="/"
-          onClick={() => setDropdownOpen(false)}
+          onClick={handleNavLinkClick}
         >
           <div className="d-flex align-items-center">
             <i className="bi bi-house-door-fill me-2"></i>
@@ -100,80 +121,76 @@ const Navbar = () => {
         <>
           <li className="nav-item">
             <Link 
-              className={`nav-link ${isActive(currentUser.userType === 'therapist' ? '/therapist' : '/instructor')}`}
-              to={currentUser.userType === 'therapist' ? '/therapist' : '/instructor'}
-              onClick={() => setDropdownOpen(false)}
+              className={`nav-link ${isActive(getDashboardPath())}`}
+              to={getDashboardPath()}
+              onClick={handleNavLinkClick}
             >
               <div className="d-flex align-items-center">
-                <i className="bi bi-speedometer2 me-2"></i>
+                <i className={`bi ${getDashboardIcon()} me-2`}></i>
                 <span>Dashboard</span>
               </div>
             </Link>
           </li>
           
-          <li className="nav-item dropdown" onMouseEnter={() => setDropdownOpen(true)} onMouseLeave={() => setDropdownOpen(false)}>
-            <button 
-              className="nav-link dropdown-toggle d-flex align-items-center bg-transparent border-0"
-              onClick={handleDropdownToggle}
-              id="userDropdown"
-            >
+          <li className="nav-item user-info-desktop ms-2">
+            <div className="d-flex align-items-center">
               <div className="avatar-sm bg-primary bg-gradient rounded-circle d-flex align-items-center justify-content-center me-2">
-                <i className="bi bi-person-fill text-white"></i>
+                {currentUser.avatar ? (
+                  <img 
+                    src={currentUser.avatar} 
+                    alt={currentUser.name}
+                    className="rounded-circle w-100 h-100"
+                  />
+                ) : (
+                  <i className="bi bi-person-fill text-white"></i>
+                )}
               </div>
               <div className="d-flex flex-column text-start">
-                <span className="fw-medium">{currentUser.name}</span>
-                <small className="text-muted">{currentUser.email}</small>
+                <span className="color-change fw-medium text-truncate" style={{ maxWidth: '120px', color: 'white' }}>
+                  {currentUser.name}
+                </span>
+                <small className="text-muted text-truncate" style={{ maxWidth: '120px' }}>
+                  {currentUser.email}
+                </small>
               </div>
-              <i className={`bi bi-chevron-down ms-2 small transition-all ${dropdownOpen ? 'rotate-180' : ''}`}></i>
-            </button>
-            
-            <div className={`dropdown-menu dropdown-menu-end shadow border-0 mt-2 ${dropdownOpen ? 'show' : ''}`}>
-              <div className="dropdown-header">
-                <div className="d-flex align-items-center">
-                  <div className="avatar-md bg-primary bg-gradient rounded-circle d-flex align-items-center justify-content-center me-3">
-                    <i className="bi bi-person-fill text-white fs-4"></i>
-                  </div>
-                  <div>
-                    <h6 className="mb-0 fw-bold">{currentUser.name}</h6>
-                    <small className="text-muted">{currentUser.email}</small>
-                  </div>
-                </div>
-              </div>
-              <div className="dropdown-divider"></div>
-              <Link className="dropdown-item" to="#" onClick={handleNavLinkClick}>
-                <i className="bi bi-person-circle me-2"></i>
-                Profile
-              </Link>
-              <Link className="dropdown-item" to="#" onClick={handleNavLinkClick}>
-                <i className="bi bi-gear me-2"></i>
-                Settings
-              </Link>
-              <div className="dropdown-divider"></div>
-              <button className="dropdown-item text-danger d-flex align-items-center" onClick={handleLogout}>
-                <i className="bi bi-box-arrow-right me-2"></i>
-                Logout
-              </button>
             </div>
+          </li>
+          
+          <li className="nav-item ms-2">
+            <button 
+              className="btn btn-outline-light btn-logout d-flex align-items-center"
+              onClick={handleLogout}
+            >
+              <i className="bi bi-box-arrow-right me-2"></i>
+              <span className="d-none d-md-inline">Logout</span>
+            </button>
           </li>
         </>
       ) : (
         <>
-          <li className="nav-item">
+          <li className="nav-item ms-2">
             <Link 
-              className={`nav-link ${isActive('/login')} btn-login`}
+              className={`nav-link btn-login ${isActive('/login')}`}
               to="/login"
+              onClick={handleNavLinkClick}
             >
-              <i className="bi bi-box-arrow-in-right me-2"></i>
-              Login
+              <div className="d-flex align-items-center">
+                <i className="bi bi-box-arrow-in-right me-2"></i>
+                <span>Login</span>
+              </div>
             </Link>
           </li>
+          
           <li className="nav-item ms-2">
             <Link 
               className={`nav-link btn-register ${isActive('/register')}`}
               to="/register"
+              onClick={handleNavLinkClick}
             >
-              <i className="bi bi-person-plus me-2"></i>
-              Register
+              <div className="d-flex align-items-center">
+                <i className="bi bi-person-plus me-2"></i>
+                <span>Register</span>
+              </div>
             </Link>
           </li>
         </>
@@ -186,7 +203,7 @@ const Navbar = () => {
     <>
       <li className="nav-item">
         <Link 
-          className={`nav-link ${isActive('/')} d-flex align-items-center`} 
+          className={`nav-link ${isActive('/')} d-flex align-items-center py-3`} 
           to="/"
           onClick={handleNavLinkClick}
         >
@@ -195,55 +212,27 @@ const Navbar = () => {
         </Link>
       </li>
 
-      {currentUser && (
-        <li className="nav-item">
-          <Link 
-            className={`nav-link ${isActive(currentUser.userType === 'therapist' ? '/therapist' : '/instructor')} d-flex align-items-center`}
-            to={currentUser.userType === 'therapist' ? '/therapist' : '/instructor'}
-            onClick={handleNavLinkClick}
-          >
-            <i className="bi bi-speedometer2 me-3 fs-5"></i>
-            <span>Dashboard</span>
-          </Link>
-        </li>
-      )}
-
       {currentUser ? (
         <>
           <li className="nav-item">
             <Link 
-              className="nav-link d-flex align-items-center"
-              to="/profile"
+              className={`nav-link ${isActive(getDashboardPath())} d-flex align-items-center py-3`}
+              to={getDashboardPath()}
               onClick={handleNavLinkClick}
             >
-              <i className="bi bi-person-circle me-3 fs-5"></i>
-              <span>Profile</span>
+              <i className={`bi ${getDashboardIcon()} me-3 fs-5`}></i>
+              <span>Dashboard</span>
             </Link>
           </li>
-          <li className="nav-item">
-            <Link 
-              className="nav-link d-flex align-items-center"
-              to="/settings"
-              onClick={handleNavLinkClick}
-            >
-              <i className="bi bi-gear me-3 fs-5"></i>
-              <span>Settings</span>
-            </Link>
-          </li>
-          <li className="nav-item mt-4">
+
+          <li className="nav-item mt-4 pt-3 border-top border-light">
             <div className="d-grid gap-2">
               <button 
-                className="btn btn-danger btn-lg d-flex align-items-center justify-content-center"
+                className="btn btn-danger btn-lg d-flex align-items-center justify-content-center py-3"
                 onClick={handleLogout}
               >
-                <i className="bi bi-box-arrow-right me-2"></i>
-                Logout
-              </button>
-              <button 
-                className="btn btn-outline-light btn-lg"
-                onClick={handleNavLinkClick}
-              >
-                Close Menu
+                <i className="bi bi-box-arrow-right me-3"></i>
+                <span>Logout</span>
               </button>
             </div>
           </li>
@@ -252,22 +241,23 @@ const Navbar = () => {
         <>
           <li className="nav-item">
             <Link 
-              className="btn btn-primary btn-lg w-100 mb-3 d-flex align-items-center justify-content-center"
+              className="btn btn-primary btn-lg w-100 mb-3 d-flex align-items-center justify-content-center py-3"
               to="/login"
               onClick={handleNavLinkClick}
             >
-              <i className="bi bi-box-arrow-in-right me-2"></i>
-              Login
+              <i className="bi bi-box-arrow-in-right me-3"></i>
+              <span>Login</span>
             </Link>
           </li>
+          
           <li className="nav-item">
             <Link 
-              className="btn btn-outline-light btn-lg w-100 d-flex align-items-center justify-content-center"
+              className="btn btn-outline-light btn-lg w-100 d-flex align-items-center justify-content-center py-3"
               to="/register"
               onClick={handleNavLinkClick}
             >
-              <i className="bi bi-person-plus me-2"></i>
-              Register
+              <i className="bi bi-person-plus me-3"></i>
+              <span>Register</span>
             </Link>
           </li>
         </>
@@ -282,10 +272,7 @@ const Navbar = () => {
           <Link 
             className="navbar-brand d-flex align-items-center" 
             to="/"
-            onClick={() => {
-              setMobileMenuOpen(false);
-              setDropdownOpen(false);
-            }}
+            onClick={handleNavLinkClick}
           >
             <div className="logo-wrapper me-2">
               <i className="bi bi-heart-pulse-fill logo-icon"></i>
@@ -306,12 +293,14 @@ const Navbar = () => {
 
           {/* Mobile Menu Toggle */}
           <button 
-            className="navbar-toggler d-lg-none" 
+            className="navbar-toggler d-lg-none hamburger-menu" 
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle navigation"
           >
-            <span className="navbar-toggler-icon"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
+            <span className="hamburger-line"></span>
           </button>
         </div>
 
@@ -333,21 +322,31 @@ const Navbar = () => {
                 </div>
               </Link>
               <button 
-                className="btn-close btn-close-white"
+                className="btn-close-menu"
                 onClick={handleNavLinkClick}
                 aria-label="Close menu"
-              ></button>
+              >
+                <i className="bi bi-x-lg fs-4 text-white"></i>
+              </button>
             </div>
             
             {currentUser && (
-              <div className="user-info-card mb-4">
+              <div className="user-info-card mb-4 p-3">
                 <div className="d-flex align-items-center">
                   <div className="avatar-lg bg-primary bg-gradient rounded-circle d-flex align-items-center justify-content-center me-3">
-                    <i className="bi bi-person-fill text-white fs-4"></i>
+                    {currentUser.avatar ? (
+                      <img 
+                        src={currentUser.avatar} 
+                        alt={currentUser.name}
+                        className="rounded-circle w-100 h-100"
+                      />
+                    ) : (
+                      <i className="bi bi-person-fill text-white fs-4"></i>
+                    )}
                   </div>
                   <div className="d-flex flex-column">
-                    <span className="fw-bold text-white">{currentUser.name}</span>
-                    <small className="text-white-80">{currentUser.email}</small>
+                    <span className="fw-bold text-white mb-1">{currentUser.name}</span>
+                    <small className="text-white-80 mb-2">{currentUser.email}</small>
                     {getUserRoleBadge()}
                   </div>
                 </div>
@@ -358,6 +357,14 @@ const Navbar = () => {
           <ul className="nav flex-column mobile-nav-links">
             <MobileNavLinks />
           </ul>
+          
+          <div className="mobile-menu-footer mt-4 pt-3 border-top border-light">
+            <div className="d-flex justify-content-center">
+              <small className="text-white-50">
+                © {new Date().getFullYear()} TherapyConnect. All rights reserved.
+              </small>
+            </div>
+          </div>
         </div>
       </nav>
 
@@ -385,7 +392,9 @@ const Navbar = () => {
         .navbar-scrolled .navbar-brand,
         .navbar-scrolled .nav-link,
         .navbar-scrolled .brand-subtitle,
-        .navbar-scrolled .navbar-toggler-icon {
+        .navbar-scrolled .brand-text,
+        .navbar-scrolled .color-change,
+        .navbar-scrolled .hamburger-menu .hamburger-line {
           color: #2d3748 !important;
         }
         
@@ -393,22 +402,29 @@ const Navbar = () => {
           color: #4e73df !important;
         }
         
-        .navbar-scrolled .nav-link.dropdown-toggle {
-          color: #2d3748 !important;
-        }
-        
-        .navbar-scrolled .dropdown-toggle .text-muted {
+        .navbar-scrolled .user-info-desktop .text-muted {
           color: #6c757d !important;
         }
         
         .navbar-scrolled .btn-login {
           border: 2px solid #4e73df;
           color: #4e73df !important;
+          background: transparent;
+        }
+        
+        .navbar-scrolled .btn-login:hover {
+          background: #4e73df;
+          color: white !important;
         }
         
         .navbar-scrolled .btn-register {
-          background: linear-gradient(135deg, #4e73df 0%, #224abe 100%);
+          background: linear-gradient(135deg, #d7dff7ff 0%, #c1cff9ff 100%);
           color: white !important;
+          border: none;
+        }
+        
+        .navbar-scrolled .btn-register:hover {
+          background: linear-gradient(135deg, #224abe 0%, #4e73df 100%);
         }
         
         .navbar-brand {
@@ -424,6 +440,7 @@ const Navbar = () => {
           display: flex;
           align-items: center;
           justify-content: center;
+          transition: all 0.3s ease;
         }
         
         .navbar-scrolled .logo-wrapper {
@@ -481,24 +498,39 @@ const Navbar = () => {
           bottom: 0;
           left: 50%;
           transform: translateX(-50%);
-          width: 4px;
-          height: 4px;
+          width: 80%;
+          height: 3px;
           background: white;
-          border-radius: 50%;
+          border-radius: 100px;
         }
         
         .navbar-scrolled .nav-link.active::after {
           background: #4e73df;
         }
         
+        .navbar-scrolled .nav-link {
+          color: #495057 !important;
+        }
+        
+        .navbar-scrolled .nav-link:hover {
+          color: #4e73df !important;
+          background: rgba(78, 115, 223, 0.1);
+        }
+        
+        .navbar-scrolled .nav-link.active {
+          color: #4e73df !important;
+          background: rgba(78, 115, 223, 0.15);
+        }
+        
         .btn-login {
           border: 2px solid rgba(255, 255, 255, 0.3);
           padding: 0.5rem 1.5rem !important;
+          color: white !important;
         }
         
         .btn-login:hover {
           border-color: white;
-          background: transparent;
+          background: rgba(255, 255, 255, 0.1);
         }
         
         .btn-register {
@@ -512,14 +544,20 @@ const Navbar = () => {
           color: #4e73df !important;
         }
         
+        .user-info-desktop {
+          padding: 0.25rem 0.75rem;
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 12px;
+          margin-left: 1rem;
+        }
+        
+        .navbar-scrolled .user-info-desktop {
+          background: rgba(78, 115, 223, 0.1);
+        }
+        
         .avatar-sm {
           width: 36px;
           height: 36px;
-        }
-        
-        .avatar-md {
-          width: 48px;
-          height: 48px;
         }
         
         .avatar-lg {
@@ -527,51 +565,30 @@ const Navbar = () => {
           height: 60px;
         }
         
-        .dropdown-menu {
-          border: none;
-          border-radius: 12px;
-          min-width: 240px;
-          padding: 0;
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
-          animation: fadeIn 0.2s ease;
-        }
-        
-        .dropdown-header {
-          padding: 1rem;
-          background: #f8f9fa;
-          border-radius: 12px 12px 0 0;
-        }
-        
-        .dropdown-item {
-          padding: 0.75rem 1.25rem;
+        .btn-logout {
+          padding: 0.5rem 1.5rem;
+          border-radius: 8px;
           font-weight: 500;
           transition: all 0.2s ease;
-          color: #495057;
-          text-decoration: none;
-          display: block;
-          cursor: pointer;
+          border: 2px solid rgba(255, 255, 255, 0.3);
+          color: white;
+          background: transparent;
         }
         
-        .dropdown-item:hover {
-          background: #f8f9fa;
-          padding-left: 1.5rem;
-          color: #0d6efd;
+        .btn-logout:hover {
+          background: rgba(220, 53, 69, 0.1);
+          border-color: #ed8a94ff;
+          color: #ed8a94ff;
         }
         
-        .dropdown-item.text-danger:hover {
-          color: #dc3545 !important;
+        .navbar-scrolled .btn-logout {
+          border: 2px solid #dc3545;
+          color: #dc3545;
         }
         
-        .dropdown-divider {
-          margin: 0;
-        }
-        
-        .transition-all {
-          transition: all 0.3s ease;
-        }
-        
-        .rotate-180 {
-          transform: rotate(180deg);
+        .navbar-scrolled .btn-logout:hover {
+          background: #dc3545;
+          color: white;
         }
         
         /* Mobile Menu */
@@ -583,9 +600,10 @@ const Navbar = () => {
           height: 100vh;
           background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
           padding: 1.5rem;
-          transition: right 0.3s ease;
+          transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 1050;
           overflow-y: auto;
+          box-shadow: -5px 0 30px rgba(0, 0, 0, 0.1);
         }
         
         .mobile-menu.show {
@@ -616,7 +634,7 @@ const Navbar = () => {
         }
         
         .mobile-nav-links {
-          padding-top: 1.5rem;
+          padding-top: 1rem;
         }
         
         .mobile-nav-links .nav-link {
@@ -632,28 +650,71 @@ const Navbar = () => {
           padding-left: 0.5rem;
         }
         
+        .mobile-nav-links .nav-link.active {
+          background: transparent;
+          color: white !important;
+          border-left: 3px solid white;
+          padding-left: 0.5rem;
+        }
+        
         .text-white-80 {
           color: rgba(255, 255, 255, 0.8);
         }
         
-        .navbar-toggler {
+        .text-white-50 {
+          color: rgba(255, 255, 255, 0.5);
+        }
+        
+        /* Custom Hamburger Menu */
+        .hamburger-menu {
           border: none;
           padding: 0.5rem;
           background: transparent;
+          width: 40px;
+          height: 40px;
+          display: flex;
+          flex-direction: column;
+          justify-content: space-between;
+          align-items: center;
+          cursor: pointer;
         }
         
-        .navbar-toggler:focus {
+        .hamburger-menu:focus {
           box-shadow: none;
           outline: none;
         }
         
-        .navbar-toggler-icon {
-          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%28255, 255, 255, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
-          transition: background-image 0.3s ease;
+        .hamburger-line {
+          width: 24px;
+          height: 2px;
+          background: rgba(255, 255, 255, 0.9);
+          border-radius: 2px;
+          transition: all 0.3s ease;
         }
         
-        .navbar-scrolled .navbar-toggler-icon {
-          background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba%280, 0, 0, 0.9%29' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+        .navbar-scrolled .hamburger-line {
+          background: #2d3748;
+        }
+        
+        .hamburger-menu:hover .hamburger-line {
+          background: white;
+        }
+        
+        .navbar-scrolled .hamburger-menu:hover .hamburger-line {
+          background: #4e73df;
+        }
+        
+        .btn-close-menu {
+          background: transparent;
+          border: none;
+          color: white;
+          padding: 0.5rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+        }
+        
+        .btn-close-menu:hover {
+          transform: rotate(90deg);
         }
         
         /* Overlay for mobile menu */
@@ -664,58 +725,64 @@ const Navbar = () => {
           right: 0;
           bottom: 0;
           background: rgba(0, 0, 0, 0.5);
+          backdrop-filter: blur(3px);
           z-index: 1049;
-          display: none;
+          opacity: 0;
+          visibility: hidden;
+          transition: all 0.3s ease;
         }
         
         .mobile-menu-overlay.show {
-          display: block;
+          opacity: 1;
+          visibility: visible;
         }
         
-        /* Animation for dropdown */
-        @keyframes fadeIn {
+        /* Animation for mobile menu */
+        @keyframes slideIn {
           from {
-            opacity: 0;
-            transform: translateY(-10px);
+            transform: translateX(100%);
           }
           to {
-            opacity: 1;
-            transform: translateY(0);
+            transform: translateX(0);
           }
         }
         
-        /* Ensure dropdown is visible */
-        .dropdown-menu.show {
-          display: block !important;
-          animation: fadeIn 0.2s ease;
+        .mobile-menu.show {
+          animation: slideIn 0.3s ease;
         }
         
-        /* Logout button in desktop */
-        .nav-item .btn-logout {
-          background: transparent;
-          border: 2px solid rgba(255, 255, 255, 0.3);
-          color: white;
-          padding: 0.5rem 1.5rem;
-          border-radius: 8px;
-          font-weight: 500;
-          transition: all 0.2s ease;
-          margin-left: 0.5rem;
+        /* Enhanced badge styling */
+        .badge.bg-gradient {
+          background: linear-gradient(135deg, var(--bs-primary) 0%, var(--bs-primary-dark) 100%);
+          padding: 0.35em 0.65em;
+          font-size: 0.75em;
         }
         
-        .nav-item .btn-logout:hover {
-          background: rgba(255, 0, 0, 0.1);
-          border-color: #dc3545;
-          color: #dc3545;
+        .badge.bg-primary.bg-gradient {
+          --bs-primary: #4e73df;
+          --bs-primary-dark: #224abe;
         }
         
-        .navbar-scrolled .nav-item .btn-logout {
-          border: 2px solid #dc3545;
-          color: #dc3545;
+        .badge.bg-success.bg-gradient {
+          --bs-primary: #1cc88a;
+          --bs-primary-dark: #13855c;
         }
         
-        .navbar-scrolled .nav-item .btn-logout:hover {
-          background: #dc3545;
-          color: white;
+        .badge.bg-danger.bg-gradient {
+          --bs-primary: #e74a3b;
+          --bs-primary-dark: #be2617;
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+          .container {
+            padding-right: 1rem;
+            padding-left: 1rem;
+          }
+          
+          .navbar-brand {
+            max-width: calc(100% - 50px);
+          }
         }
       `}</style>
 
