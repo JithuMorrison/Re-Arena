@@ -1,12 +1,12 @@
 // src/pages/Home.js
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from './AuthContext';
+import { useAuth} from './AuthContext';
 
 const Home = () => {
   const [userCode, setUserCode] = useState('');
   const navigate = useNavigate();
-  const { currentUser } = useAuth();
+  const { currentUser, logout } = useAuth();
 
   const handleUserCodeSubmit = (e) => {
     e.preventDefault();
@@ -16,11 +16,19 @@ const Home = () => {
   };
 
   const handleTherapistLogin = () => {
-    navigate('/login', { state: { userType: 'therapist' } });
+    confirm = confirm("Want to logout? You will be redirected to login page.");
+    if (confirm){
+      logout();
+      navigate('/login', { state: { userType: 'therapist' } });
+    }
   };
 
   const handleInstructorLogin = () => {
-    navigate('/login', { state: { userType: 'instructor' } });
+    confirm = confirm("Want to logout? You will be redirected to login page.");
+    if (confirm){
+      logout();
+      navigate('/login', { state: { userType: 'instructor' } });
+    }
   };
 
   const handleGoToDashboard = () => {
