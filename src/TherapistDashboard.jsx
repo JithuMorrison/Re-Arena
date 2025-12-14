@@ -532,7 +532,7 @@ const TherapistDashboard = () => {
       const instructorDetails = await Promise.all(
         instructorIds.map(async (instructorId) => {
           try {
-            const response = await fetch(`http://localhost:5000/api/users/${instructorId}`);
+            const response = await fetch(`http://localhost:5000/api/user/${instructorId}`);
             const data = await response.json();
             return data.user;
           } catch (error) {
@@ -546,13 +546,13 @@ const TherapistDashboard = () => {
       const validInstructors = instructorDetails
         .filter(instructor => instructor !== null)
         .map(instructor => ({
-          _id: instructor._id,
+          _id: instructor.id,
           name: instructor.name || 'Unknown Instructor',
           email: instructor.email || 'No email',
           role: 'Instructor'
         }));
 
-      console.log('Valid Instructors:', validInstructors);
+        console.log('Valid Instructors for Report:', sessionDetails);
       
       // Prepare graph data for the report
       const graphData = {
@@ -577,18 +577,18 @@ const TherapistDashboard = () => {
         // Game configuration parameters
         gameConfig: sessionDetails.map(session => ({
           date: session?.date || new Date().toISOString(),
-          bubbleSpeed: session?.analytics?.bubbleSpeedAction || 0,
-          bubbleLifetime: session?.analytics?.bubbleLifetime || 0,
-          bubbleSize: session?.analytics?.bubbleSize || 0,
-          numBubbles: session?.analytics?.numBubbles || 0,
-          spawnAreaSize: session?.analytics?.spawnAreaSize || 0,
-          spawnHeight: session?.analytics?.spawnHeight || 0,
+          bubbleSpeed: session?.gameData.analytics?.bubbleSpeedAction || 0,
+          bubbleLifetime: session?.gameData.analytics?.bubbleLifetime || 0,
+          bubbleSize: session?.gameData.analytics?.bubbleSize || 0,
+          numBubbles: session?.gameData.analytics?.numBubbles || 0,
+          spawnAreaSize: session?.gameData.analytics?.spawnAreaSize || 0,
+          spawnHeight: session?.gameData.analytics?.spawnHeight || 0,
           instructorId: session.instructorId
         })),
         
         // Instructor performance data
         instructorPerformance: validInstructors.map(instructor => {
-          const instructorSessions = sessionDetails.filter(s => s.instructorId === instructor._id);
+          const instructorSessions = sessionDetails.filter(s => s.instructorId === instructor.id);
           const avgScore = instructorSessions.length > 0 
             ? instructorSessions.reduce((sum, s) => sum + (s.gameData?.score || 0), 0) / instructorSessions.length
             : 0;
@@ -1631,7 +1631,7 @@ const TherapistDashboard = () => {
                         </thead>
                         <tbody>
                           {instructors.map(instructor => {
-                            const instructorSessions = sessions.filter(s => s.instructorId === instructor._id);
+                            const instructorSessions = sessions.filter(s => s.instructorId === instructor.userId);
                             const avgScore = instructorSessions.length > 0 
                               ? (instructorSessions.reduce((sum, s) => sum + (s.gameData?.score || 0), 0) / instructorSessions.length).toFixed(1)
                               : '0.0';
@@ -1654,6 +1654,7 @@ const TherapistDashboard = () => {
                                 </td>
                                 <td>
                                   <span className="badge bg-info">
+                                  {console.log(instructorSessions)}
                                     {[...new Set(instructorSessions.map(s => s.patientId))].length}
                                   </span>
                                 </td>
