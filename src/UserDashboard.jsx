@@ -282,7 +282,7 @@ const UserDashboard = () => {
               <div className="card-body p-4">
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-medium">Communication Skills</span>
+                    <span className="fw-medium">Average Rating</span>
                     <span className="fw-bold text-primary">75%</span>
                   </div>
                   <div className="progress mb-3" style={{ height: '10px' }}>
@@ -296,8 +296,8 @@ const UserDashboard = () => {
                 
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-medium">Motor Skills</span>
-                    <span className="fw-bold text-info">60%</span>
+                    <span className="fw-medium">Completed Sessions</span>
+                    <span className="fw-bold text-info">93%</span>
                   </div>
                   <div className="progress mb-3" style={{ height: '10px' }}>
                     <div 
@@ -310,8 +310,8 @@ const UserDashboard = () => {
                 
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-medium">Cognitive Abilities</span>
-                    <span className="fw-bold text-warning">45%</span>
+                    <span className="fw-medium">Average Score</span>
+                    <span className="fw-bold text-warning">65%</span>
                   </div>
                   <div className="progress mb-3" style={{ height: '10px' }}>
                     <div 
@@ -324,8 +324,8 @@ const UserDashboard = () => {
                 
                 <div className="mb-0">
                   <div className="d-flex justify-content-between align-items-center mb-2">
-                    <span className="fw-medium">Social Interaction</span>
-                    <span className="fw-bold text-success">30%</span>
+                    <span className="fw-medium">Rehabilitation Improvement</span>
+                    <span className="fw-bold text-success">79%</span>
                   </div>
                   <div className="progress" style={{ height: '10px' }}>
                     <div 
