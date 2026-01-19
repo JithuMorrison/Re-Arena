@@ -156,9 +156,13 @@ const TherapistDashboard = () => {
       const data = await response.json();
       if (response.ok) {
         setPatientGames(data.games || {});
+      } else {
+        console.error('Error fetching patient games:', data.error);
+        alert(`Error: ${data.error}`);
       }
     } catch (error) {
       console.error('Error fetching patient games:', error);
+      alert('Error fetching patient games');
     } finally {
       setLoading(false);
     }
