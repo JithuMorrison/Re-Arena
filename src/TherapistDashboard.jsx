@@ -68,6 +68,10 @@ const TherapistDashboard = () => {
   const [currentReport, setCurrentReport] = useState(null);
   const [generatingAI, setGeneratingAI] = useState(false);
   const [chartData, setChartData] = useState(null);
+  
+  // UPDATED: Previous reports state - now uses existing reports data
+  const [selectedPreviousReports, setSelectedPreviousReports] = useState([]);
+  
   const reportRef = useRef(null);
 
   const geminiApiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -147,6 +151,11 @@ const TherapistDashboard = () => {
     } catch (error) {
       console.error('Error fetching reports:', error);
     }
+  };
+
+  // UPDATED: Get previous reports for a patient from existing reports data
+  const getPreviousReportsForPatient = (patientId) => {
+    return reports.filter(report => report.patientId === patientId);
   };
 
   const fetchPatientGames = async (patientId) => {
@@ -231,9 +240,24 @@ const TherapistDashboard = () => {
     });
   };
 
+  // UPDATED: generateAIReport function using existing reports data
   const generateAIReport = async (therapistSuggestions, patientData, sessionData) => {
     try {
       setGeneratingAI(true);
+      
+      // Get selected previous reports data from existing reports
+      const previousReportsContext = selectedPreviousReports.map(reportId => {
+        const report = reports.find(r => r._id === reportId);
+        if (report) {
+          return `
+            Previous Report (${new Date(report.createdAt).toLocaleDateString()}):
+            Summary: ${report.reportData?.summary || 'N/A'}
+            Progress: ${report.reportData?.progress || 'N/A'}
+            Recommendations: ${report.reportData?.recommendations || 'N/A'}
+          `;
+        }
+        return '';
+      }).join('\n\n');
       
       const prompt = `
         As a medical report generator, create a professional therapy progress report based on the following information:
@@ -243,6 +267,13 @@ const TherapistDashboard = () => {
         - Age: ${patientData.age}
         - Condition: ${patientData.condition}
         
+        ${previousReportsContext ? `
+        Previous Reports History:
+        ${previousReportsContext}
+        
+        Please consider the patient's historical progress when generating this report.
+        ` : ''}
+        
         Recent Sessions Data:
         ${sessionData.map(s => `
           Date: ${new Date(s.date).toLocaleDateString()}
@@ -250,15 +281,17 @@ const TherapistDashboard = () => {
           Score: ${s.gameData?.score || '0'}
           Rating: ${s.rating || '0'}
           Review: ${s.review || 'No review'}
+          Left Hand Movement: ${s.gameData?.leftHandMaxFromHip || '0'}m
+          Right Hand Movement: ${s.gameData?.rightHandMaxFromHip || '0'}m
         `).join('\n')}
         
         Therapist Suggestions:
         ${therapistSuggestions}
         
         Please provide:
-        1. A professional summary of progress
-        2. Detailed progress assessment with metrics
-        3. Recommendations for next steps
+        1. A professional summary of progress ${previousReportsContext ? '(comparing with previous reports)' : ''}
+        2. Detailed progress assessment with metrics ${previousReportsContext ? 'showing improvement trends' : ''}
+        3. Recommendations for next steps ${previousReportsContext ? 'building on previous recommendations' : ''}
         
         Format the response as JSON with keys: summary, progress, recommendations
       `;
@@ -287,10 +320,9 @@ const TherapistDashboard = () => {
           let jsonString = aiText;
 
           if (jsonMatch) {
-            jsonString = jsonMatch[1].trim(); // inside the fenced block
+            jsonString = jsonMatch[1].trim();
           }
 
-          // Parse JSON
           const parsed = JSON.parse(jsonString);
 
           setAiGeneratedContent({
@@ -300,7 +332,6 @@ const TherapistDashboard = () => {
           });
         } catch (parseError) {
           console.error('Error parsing AI response:', parseError);
-          // Fallback if JSON parsing fails
           const aiText = data.candidates[0].content.parts[0].text;
 
           setAiGeneratedContent({
@@ -397,12 +428,16 @@ const TherapistDashboard = () => {
     setShowPatientSessions(true);
   };
 
+  // UPDATED: handleCreateReport using existing reports data
   const handleCreateReport = async (patient) => {
     setSelectedPatient(patient);
     setShowCreateReport(true);
+    setSelectedPreviousReports([]); // Reset selection
     
     // Fetch patient sessions for the report
-    const response = await fetch(`http://localhost:5000/api/sessions?patientId=${patient._id}&userType=therapist&userId=${currentUser.id}`);
+    const response = await fetch(
+      `http://localhost:5000/api/sessions?patientId=${patient._id}&userType=therapist&userId=${currentUser.id}`
+    );
     const data = await response.json();
     
     if (response.ok && data.sessions.length > 0) {
@@ -414,6 +449,8 @@ const TherapistDashboard = () => {
         title: `Progress Report - ${patient.name} - ${new Date().toLocaleDateString()}`
       }));
     }
+    
+    // No need to fetch previous reports separately - we already have them in state
   };
 
   const handleViewReport = async (report) => {
@@ -457,7 +494,7 @@ const TherapistDashboard = () => {
       const data = await response.json();
 
       if (response.ok) {
-        // Optionally remove the report from state to refresh UI
+        // Remove the report from state to refresh UI
         setReports((prevReports) => prevReports.filter(r => r._id !== reportId));
         alert("Report deleted successfully");
       } else {
@@ -655,7 +692,8 @@ const TherapistDashboard = () => {
           progress: '',
           recommendations: ''
         });
-        fetchReports();
+        setSelectedPreviousReports([]); // Reset previous reports selection
+        fetchReports(); // Refresh reports list
       } else {
         alert(`Error: ${data.error}`);
       }
@@ -1456,6 +1494,11 @@ const TherapistDashboard = () => {
       </div>
     );
   }
+
+  // UPDATED: Get previous reports for selected patient
+  const previousReportsForPatient = selectedPatient 
+    ? getPreviousReportsForPatient(selectedPatient._id)
+    : [];
 
   return (
     <div className="container-fluid p-0 bg-light min-vh-100" style={{marginTop: '100px'}}>
@@ -2604,12 +2647,27 @@ const TherapistDashboard = () => {
                         <h6 className="mb-0">
                           <i className="bi bi-robot me-2"></i>
                           AI Report Assistant
+                          {selectedPreviousReports.length > 0 && (
+                            <span className="badge bg-white text-info ms-2">
+                              {selectedPreviousReports.length} prev. reports
+                            </span>
+                          )}
                         </h6>
                       </div>
                       <div className="card-body">
                         <p className="small text-muted mb-3">
-                          Use AI to generate a draft report based on patient's session data and your suggestions.
+                          Use AI to generate a draft report based on patient's session data
+                          {selectedPreviousReports.length > 0 && ' and selected previous reports'}
+                          , along with your suggestions.
                         </p>
+                        {selectedPreviousReports.length > 0 && (
+                          <div className="alert alert-info py-2 mb-3">
+                            <small>
+                              <i className="bi bi-lightbulb me-1"></i>
+                              AI will analyze historical progress from {selectedPreviousReports.length} previous report(s)
+                            </small>
+                          </div>
+                        )}
                         <button 
                           type="button" 
                           className="btn btn-outline-info w-100"
@@ -2634,6 +2692,7 @@ const TherapistDashboard = () => {
                             <>
                               <i className="bi bi-magic me-2"></i>
                               Generate with AI
+                              {selectedPreviousReports.length > 0 && ` (${selectedPreviousReports.length} reports)`}
                             </>
                           )}
                         </button>
@@ -2641,6 +2700,82 @@ const TherapistDashboard = () => {
                     </div>
                   </div>
                 </div>
+
+                {/* Previous Reports Selection Section */}
+                {previousReportsForPatient.length > 0 && (
+                  <div className="col-md-12 mb-4">
+                    <div className="card border-warning">
+                      <div className="card-header bg-warning text-white">
+                        <h6 className="mb-0">
+                          <i className="bi bi-clock-history me-2"></i>
+                          Previous Reports History
+                        </h6>
+                      </div>
+                      <div className="card-body">
+                        <p className="small text-muted mb-3">
+                          Select previous reports to provide historical context for AI generation. 
+                          This helps create more comprehensive reports by tracking progress over time.
+                        </p>
+                        <div className="row">
+                          {previousReportsForPatient.map(report => (
+                            <div key={report._id} className="col-md-6 mb-3">
+                              <div className="form-check card p-3 h-100">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  value={report._id}
+                                  id={`prev-report-${report._id}`}
+                                  checked={selectedPreviousReports.includes(report._id)}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setSelectedPreviousReports([...selectedPreviousReports, report._id]);
+                                    } else {
+                                      setSelectedPreviousReports(
+                                        selectedPreviousReports.filter(id => id !== report._id)
+                                      );
+                                    }
+                                  }}
+                                />
+                                <label className="form-check-label ms-2" htmlFor={`prev-report-${report._id}`}>
+                                  <div className="fw-bold text-primary">
+                                    {report.reportData?.title || 'Untitled Report'}
+                                  </div>
+                                  <small className="text-muted d-block">
+                                    <i className="bi bi-calendar me-1"></i>
+                                    {new Date(report.createdAt).toLocaleDateString()}
+                                  </small>
+                                  <small className="text-muted d-block mt-1">
+                                    {report.reportData?.summary?.substring(0, 100)}
+                                    {report.reportData?.summary?.length > 100 ? '...' : ''}
+                                  </small>
+                                  <div className="mt-2">
+                                    <span className="badge bg-info bg-opacity-10 text-info me-1">
+                                      <i className="bi bi-file-text me-1"></i>
+                                      {report.sessions?.length || 0} sessions
+                                    </span>
+                                    {report.reportData?.instructors?.length > 0 && (
+                                      <span className="badge bg-success bg-opacity-10 text-success">
+                                        <i className="bi bi-people me-1"></i>
+                                        {report.reportData.instructors.length} instructors
+                                      </span>
+                                    )}
+                                  </div>
+                                </label>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                        {selectedPreviousReports.length > 0 && (
+                          <div className="alert alert-success mt-3 mb-0">
+                            <i className="bi bi-check-circle me-2"></i>
+                            <strong>{selectedPreviousReports.length}</strong> previous report(s) selected.
+                            AI will use this historical data to generate a more comprehensive report.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <form onSubmit={handleCreateReportSubmit}>
                   <div className="mb-3">
