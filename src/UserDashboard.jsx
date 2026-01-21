@@ -97,6 +97,86 @@ const UserDashboard = () => {
     }
   };
 
+  // Calculate weekly summary based on real data
+  const getWeeklySummary = (num) => {
+    if (sessions.length === 0) {
+      return {
+        avgRating: 0,
+        completedSessions: 0,
+        avgScore: 0,
+        improvement: 0
+      };
+    }
+
+    // Get sessions from the last 7 days
+    const now = new Date();
+    const weekAgo = new Date(now.getTime() - num * 24 * 60 * 60 * 1000);
+    const weeklySessions = sessions.filter(s => new Date(s.date) >= weekAgo);
+
+    if (weeklySessions.length === 0) {
+      // If no sessions this week, use all sessions
+      const totalRating = sessions.reduce((sum, s) => sum + (s.rating || 0), 0);
+      const avgRating = sessions.length > 0 ? (totalRating / sessions.length) * 20 : 0;
+      
+      const totalScore = sessions.reduce((sum, s) => sum + (s.gameData?.score || 0), 0);
+      const avgScore = sessions.length > 0 ? (totalScore / sessions.length) : 0;
+      
+      return {
+        avgRating: Math.round(avgRating),
+        completedSessions: 0,
+        avgScore: Math.round(avgScore),
+        improvement: 0
+      };
+    }
+
+    // Calculate average rating percentage
+    const totalRating = weeklySessions.reduce((sum, s) => sum + (s.rating || 0), 0);
+    const avgRating = (totalRating / weeklySessions.length) * 20; // Convert 5-star to percentage
+
+    // Calculate completed sessions percentage (assuming some target like 5 sessions per week)
+    const targetSessions = 5;
+    const completedSessions = Math.min((weeklySessions.length / targetSessions) * 100, 100);
+
+    // Calculate average score
+    const totalScore = weeklySessions.reduce((sum, s) => sum + (s.gameData?.score || 0), 0);
+    const avgScore = totalScore / weeklySessions.length;
+
+    // Calculate improvement (compare first half of week vs second half)
+    const midWeek = new Date(weekAgo.getTime() + 3.5 * 24 * 60 * 60 * 1000);
+    const firstHalf = weeklySessions.filter(s => new Date(s.date) < midWeek);
+    const secondHalf = weeklySessions.filter(s => new Date(s.date) >= midWeek);
+    
+    let improvement = 0;
+    if (firstHalf.length > 0 && secondHalf.length > 0) {
+      const firstAvg = firstHalf.reduce((sum, s) => sum + (s.rating || 0), 0) / firstHalf.length;
+      const secondAvg = secondHalf.reduce((sum, s) => sum + (s.rating || 0), 0) / secondHalf.length;
+      improvement = ((secondAvg - firstAvg) / firstAvg) * 100;
+      improvement = Math.max(0, Math.min(100, 50 + improvement)); // Normalize to 0-100
+    }
+
+    return {
+      avgRating: Math.round(avgRating),
+      completedSessions: Math.round(completedSessions),
+      avgScore: Math.round(avgScore),
+      improvement: Math.round(improvement)
+    };
+  };
+
+  // Calculate days since last session
+  const getDaysSinceLastSession = () => {
+    if (sessions.length === 0) return 0;
+    const sortedSessions = [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date));
+    const lastSession = sortedSessions[0];
+    const days = Math.floor((new Date() - new Date(lastSession.date)) / (1000 * 60 * 60 * 24));
+    return days;
+  };
+
+  const [weeklySummary, setWeeklySummary] = useState(getWeeklySummary(130));
+
+  useEffect(() => {
+    setWeeklySummary(getWeeklySummary(130));
+  }, [sessions]);
+
   if (!userData) {
     return (
       <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light">
@@ -214,7 +294,7 @@ const UserDashboard = () => {
                     <h2 className="display-6 fw-bold mb-0">
                       {sessions.length > 0 
                         ? (sessions.reduce((sum, session) => sum + (session.rating || 0), 0) / sessions.length).toFixed(1)
-                        : '0.0'
+                        : '0'
                       }
                     </h2>
                     <p className="text-muted mb-0">Average Rating</p>
@@ -251,10 +331,7 @@ const UserDashboard = () => {
                   </div>
                   <div>
                     <h2 className="display-6 fw-bold mb-0">
-                      {sessions.length > 0
-                        ? Math.floor((new Date() - new Date(sessions[0].date)) / (1000 * 60 * 60 * 24))
-                        : 0
-                      }
+                      {getDaysSinceLastSession()}
                     </h2>
                     <p className="text-muted mb-0">Days Since Last Session</p>
                   </div>
@@ -274,6 +351,7 @@ const UserDashboard = () => {
                     <i className="bi bi-graph-up me-2"></i>
                     Progress Overview
                   </h5>
+                  <input type="number" defaultValue={130} className="form-control form-control-sm w-auto" onChange={(e)=>{setWeeklySummary(getWeeklySummary(e.target.value));}} />
                   <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1">
                     Weekly Summary
                   </span>
@@ -283,13 +361,13 @@ const UserDashboard = () => {
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="fw-medium">Average Rating</span>
-                    <span className="fw-bold text-primary">75%</span>
+                    <span className="fw-bold text-primary">{weeklySummary.avgRating}%</span>
                   </div>
                   <div className="progress mb-3" style={{ height: '10px' }}>
                     <div 
                       className="progress-bar bg-primary" 
                       role="progressbar" 
-                      style={{ width: '75%' }}
+                      style={{ width: `${weeklySummary.avgRating}%` }}
                     ></div>
                   </div>
                 </div>
@@ -297,13 +375,13 @@ const UserDashboard = () => {
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="fw-medium">Completed Sessions</span>
-                    <span className="fw-bold text-info">93%</span>
+                    <span className="fw-bold text-info">{weeklySummary.completedSessions}%</span>
                   </div>
                   <div className="progress mb-3" style={{ height: '10px' }}>
                     <div 
                       className="progress-bar bg-info" 
                       role="progressbar" 
-                      style={{ width: '60%' }}
+                      style={{ width: `${weeklySummary.completedSessions}%` }}
                     ></div>
                   </div>
                 </div>
@@ -311,13 +389,13 @@ const UserDashboard = () => {
                 <div className="mb-4">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="fw-medium">Average Score</span>
-                    <span className="fw-bold text-warning">65%</span>
+                    <span className="fw-bold text-warning">{weeklySummary.avgScore}%</span>
                   </div>
                   <div className="progress mb-3" style={{ height: '10px' }}>
                     <div 
                       className="progress-bar bg-warning" 
                       role="progressbar" 
-                      style={{ width: '45%' }}
+                      style={{ width: `${weeklySummary.avgScore}%` }}
                     ></div>
                   </div>
                 </div>
@@ -325,13 +403,13 @@ const UserDashboard = () => {
                 <div className="mb-0">
                   <div className="d-flex justify-content-between align-items-center mb-2">
                     <span className="fw-medium">Rehabilitation Improvement</span>
-                    <span className="fw-bold text-success">79%</span>
+                    <span className="fw-bold text-success">{weeklySummary.improvement}%</span>
                   </div>
                   <div className="progress" style={{ height: '10px' }}>
                     <div 
                       className="progress-bar bg-success" 
                       role="progressbar" 
-                      style={{ width: '30%' }}
+                      style={{ width: `${weeklySummary.improvement}%` }}
                     ></div>
                   </div>
                 </div>
@@ -434,7 +512,7 @@ const UserDashboard = () => {
                             </td>
                             <td>
                               <span className="badge bg-light text-dark px-3 py-2">
-                                {session.gameData?.score || 'N/A'}
+                                {session.gameData?.score || 0}
                               </span>
                             </td>
                             <td>
@@ -448,7 +526,7 @@ const UserDashboard = () => {
                                   ))}
                                 </div>
                                 <span className={`fw-bold ${session.rating >= 4 ? 'text-success' : session.rating >= 3 ? 'text-warning' : 'text-danger'}`}>
-                                  {session.rating || 'N/A'}
+                                  {session.rating || 0}
                                 </span>
                               </div>
                             </td>
@@ -507,7 +585,7 @@ const UserDashboard = () => {
                             </div>
                             <div className="text-end">
                               <div className={`rating-badge ${session.rating >= 4 ? 'bg-success' : session.rating >= 3 ? 'bg-primary' : 'bg-warning'} text-white px-3 py-2 rounded-3`}>
-                                <span className="fw-bold">{session.rating || 'N/A'}/5</span>
+                                <span className="fw-bold">{session.rating || 0}/5</span>
                               </div>
                             </div>
                           </div>
@@ -518,7 +596,7 @@ const UserDashboard = () => {
                                 <div className="col-6">
                                   <div className="p-3 bg-light rounded-3 text-center">
                                     <div className="fw-bold text-primary fs-4 mb-1">
-                                      {session.gameData.analytics.score || '0'}
+                                      {session.gameData.analytics.score || 0}
                                     </div>
                                     <div className="small text-muted">Score</div>
                                   </div>
@@ -526,7 +604,7 @@ const UserDashboard = () => {
                                 <div className="col-6">
                                   <div className="p-3 bg-light rounded-3 text-center">
                                     <div className="fw-bold text-info fs-4 mb-1">
-                                      {session.gameData.analytics.movements || '0'}
+                                      {session.gameData.analytics.movements || 0}
                                     </div>
                                     <div className="small text-muted">Movements</div>
                                   </div>
@@ -534,7 +612,7 @@ const UserDashboard = () => {
                                 <div className="col-6">
                                   <div className="p-3 bg-light rounded-3 text-center">
                                     <div className="fw-bold text-success fs-4 mb-1">
-                                      {session.gameData.analytics.steps || '0'}
+                                      {session.gameData.analytics.steps || 0}
                                     </div>
                                     <div className="small text-muted">Steps Covered</div>
                                   </div>
@@ -542,7 +620,7 @@ const UserDashboard = () => {
                                 <div className="col-6">
                                   <div className="p-3 bg-light rounded-3 text-center">
                                     <div className="fw-bold text-warning fs-4 mb-1">
-                                      {session.gameData.analytics.handMovements || '0'}
+                                      {session.gameData.analytics.handMovements || 0}
                                     </div>
                                     <div className="small text-muted">Hand Movements</div>
                                   </div>
