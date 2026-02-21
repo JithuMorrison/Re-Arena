@@ -16,6 +16,7 @@ import {
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
+import AIChatbot from './AIChatbot';
 
 // Register ChartJS components
 ChartJS.register(
@@ -3486,6 +3487,22 @@ const TherapistDashboard = () => {
 
       {/* Add Bootstrap Icons */}
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css" />
+      
+      {/* AI Chatbot */}
+      <AIChatbot 
+        userRole="therapist"
+        contextData={{
+          patientName: selectedPatient?.name,
+          patientCondition: selectedPatient?.condition,
+          sessionCount: sessions.length,
+          recentSessions: sessions.slice(0, 3).map(s => ({
+            date: s.date,
+            game: s.gameData?.gameName,
+            score: s.gameData?.score,
+            rating: s.rating
+          }))
+        }}
+      />
     </div>
   );
 };
