@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import AIChatbot from './AIChatbot';
 
 const InstructorDashboard = () => {
   const { currentUser } = useAuth();
@@ -1195,6 +1196,22 @@ const InstructorDashboard = () => {
 
       {/* Add Bootstrap Icons */}
       <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css"></link>
+      
+      {/* AI Chatbot */}
+      <AIChatbot 
+        userRole="instructor"
+        contextData={{
+          patientName: userData?.name,
+          patientCondition: userData?.condition,
+          sessionCount: sessions.length,
+          recentSessions: sessions.slice(0, 3).map(s => ({
+            date: s.date,
+            game: s.gameData?.gameName,
+            score: s.gameData?.score,
+            rating: s.rating
+          }))
+        }}
+      />
     </div>
   );
 };
