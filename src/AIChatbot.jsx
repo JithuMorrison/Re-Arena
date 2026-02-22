@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 const AIChatbot = ({ userRole, contextData = {} }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -228,6 +229,83 @@ const AIChatbot = ({ userRole, contextData = {} }) => {
           padding: 12px 16px;
           border-radius: 18px;
           word-wrap: break-word;
+          line-height: 1.5;
+        }
+
+        .message-content p {
+          margin: 0 0 8px 0;
+        }
+
+        .message-content p:last-child {
+          margin-bottom: 0;
+        }
+
+        .message-content strong {
+          font-weight: 600;
+        }
+
+        .message-content em {
+          font-style: italic;
+        }
+
+        .message-content ul,
+        .message-content ol {
+          margin: 8px 0;
+          padding-left: 20px;
+        }
+
+        .message-content li {
+          margin: 4px 0;
+        }
+
+        .message-content code {
+          background: rgba(0, 0, 0, 0.1);
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 13px;
+        }
+
+        .message-content pre {
+          background: rgba(0, 0, 0, 0.1);
+          padding: 10px;
+          border-radius: 8px;
+          overflow-x: auto;
+          margin: 8px 0;
+        }
+
+        .message-content pre code {
+          background: none;
+          padding: 0;
+        }
+
+        .message-content h1,
+        .message-content h2,
+        .message-content h3,
+        .message-content h4,
+        .message-content h5,
+        .message-content h6 {
+          margin: 12px 0 8px 0;
+          font-weight: 600;
+        }
+
+        .message-content h1 { font-size: 1.4em; }
+        .message-content h2 { font-size: 1.3em; }
+        .message-content h3 { font-size: 1.2em; }
+        .message-content h4 { font-size: 1.1em; }
+        .message-content h5 { font-size: 1.05em; }
+        .message-content h6 { font-size: 1em; }
+
+        .message-content blockquote {
+          border-left: 3px solid rgba(0, 0, 0, 0.2);
+          padding-left: 12px;
+          margin: 8px 0;
+          font-style: italic;
+        }
+
+        .message-content a {
+          color: inherit;
+          text-decoration: underline;
         }
 
         .message.user .message-content {
@@ -235,10 +313,28 @@ const AIChatbot = ({ userRole, contextData = {} }) => {
           color: white;
         }
 
+        .message.user .message-content code {
+          background: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+
+        .message.user .message-content pre {
+          background: rgba(255, 255, 255, 0.15);
+        }
+
         .message.assistant .message-content {
           background: white;
           color: #333;
           box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .message.assistant .message-content code {
+          background: rgba(102, 126, 234, 0.1);
+          color: #667eea;
+        }
+
+        .message.assistant .message-content pre {
+          background: #f8f9fa;
         }
 
         .message-timestamp {
@@ -396,7 +492,11 @@ const AIChatbot = ({ userRole, contextData = {} }) => {
                 messages.map((msg, index) => (
                   <div key={index} className={`message ${msg.role}`}>
                     <div className="message-content">
-                      {msg.content}
+                      {msg.role === 'assistant' ? (
+                        <ReactMarkdown>{msg.content}</ReactMarkdown>
+                      ) : (
+                        msg.content
+                      )}
                     </div>
                     <div className="message-timestamp">
                       {new Date(msg.timestamp).toLocaleTimeString([], { 
