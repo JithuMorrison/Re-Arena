@@ -17,6 +17,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import html2canvas from 'html2canvas';
 import AIChatbot from './AIChatbot';
+import ReactMarkdown from 'react-markdown';
 
 // Register ChartJS components
 ChartJS.register(
@@ -3162,8 +3163,8 @@ const TherapistDashboard = () => {
                       <i className="bi bi-file-text me-2"></i>
                       Report Summary
                     </h5>
-                    <div className="p-3 bg-light rounded">
-                      <p className="mb-0">{currentReport.reportData.summary}</p>
+                    <div className="p-3 bg-light rounded markdown-content">
+                      <ReactMarkdown>{currentReport.reportData.summary}</ReactMarkdown>
                     </div>
                   </div>
 
@@ -3172,8 +3173,8 @@ const TherapistDashboard = () => {
                       <i className="bi bi-graph-up me-2"></i>
                       Progress Assessment
                     </h5>
-                    <div className="p-3 bg-light rounded">
-                      <p className="mb-0">{currentReport.reportData.progress}</p>
+                    <div className="p-3 bg-light rounded markdown-content">
+                      <ReactMarkdown>{currentReport.reportData.progress}</ReactMarkdown>
                     </div>
                   </div>
 
@@ -3182,8 +3183,8 @@ const TherapistDashboard = () => {
                       <i className="bi bi-lightbulb me-2"></i>
                       Recommendations
                     </h5>
-                    <div className="p-3 bg-light rounded">
-                      <p className="mb-0">{currentReport.reportData.recommendations}</p>
+                    <div className="p-3 bg-light rounded markdown-content">
+                      <ReactMarkdown>{currentReport.reportData.recommendations}</ReactMarkdown>
                     </div>
                   </div>
 
@@ -3482,6 +3483,117 @@ const TherapistDashboard = () => {
         
         .user-select-all {
           user-select: all;
+        }
+
+        .markdown-content p {
+          margin-bottom: 0.75rem;
+          line-height: 1.6;
+        }
+
+        .markdown-content p:last-child {
+          margin-bottom: 0;
+        }
+
+        .markdown-content strong {
+          font-weight: 600;
+          color: #2c3e50;
+        }
+
+        .markdown-content em {
+          font-style: italic;
+        }
+
+        .markdown-content ul,
+        .markdown-content ol {
+          margin: 0.75rem 0;
+          padding-left: 1.5rem;
+        }
+
+        .markdown-content li {
+          margin: 0.5rem 0;
+          line-height: 1.6;
+        }
+
+        .markdown-content code {
+          background: rgba(102, 126, 234, 0.1);
+          color: #667eea;
+          padding: 2px 6px;
+          border-radius: 4px;
+          font-family: 'Courier New', monospace;
+          font-size: 0.9em;
+        }
+
+        .markdown-content pre {
+          background: #f8f9fa;
+          padding: 1rem;
+          border-radius: 8px;
+          overflow-x: auto;
+          margin: 0.75rem 0;
+          border: 1px solid #dee2e6;
+        }
+
+        .markdown-content pre code {
+          background: none;
+          padding: 0;
+          color: #333;
+        }
+
+        .markdown-content h1,
+        .markdown-content h2,
+        .markdown-content h3,
+        .markdown-content h4,
+        .markdown-content h5,
+        .markdown-content h6 {
+          margin: 1rem 0 0.75rem 0;
+          font-weight: 600;
+          color: #2c3e50;
+        }
+
+        .markdown-content h1 { font-size: 1.5em; }
+        .markdown-content h2 { font-size: 1.4em; }
+        .markdown-content h3 { font-size: 1.3em; }
+        .markdown-content h4 { font-size: 1.2em; }
+        .markdown-content h5 { font-size: 1.1em; }
+        .markdown-content h6 { font-size: 1em; }
+
+        .markdown-content blockquote {
+          border-left: 4px solid #667eea;
+          padding-left: 1rem;
+          margin: 0.75rem 0;
+          font-style: italic;
+          color: #6c757d;
+        }
+
+        .markdown-content a {
+          color: #667eea;
+          text-decoration: underline;
+        }
+
+        .markdown-content a:hover {
+          color: #764ba2;
+        }
+
+        .markdown-content hr {
+          margin: 1rem 0;
+          border: 0;
+          border-top: 2px solid #dee2e6;
+        }
+
+        .markdown-content table {
+          width: 100%;
+          margin: 0.75rem 0;
+          border-collapse: collapse;
+        }
+
+        .markdown-content table th,
+        .markdown-content table td {
+          padding: 0.5rem;
+          border: 1px solid #dee2e6;
+        }
+
+        .markdown-content table th {
+          background: #f8f9fa;
+          font-weight: 600;
         }
       `}</style>
 
